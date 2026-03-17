@@ -22,7 +22,10 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'matricula',
+        'role',
         'email',
+        'profile_photo_path',
         'password',
     ];
 
@@ -61,5 +64,17 @@ class User extends Authenticatable
             ->take(2)
             ->map(fn ($word) => Str::substr($word, 0, 1))
             ->implode('');
+    }
+
+    /**
+     * Get the public URL for the user's profile photo.
+     */
+    public function profilePhotoUrl(): ?string
+    {
+        if (! $this->profile_photo_path) {
+            return null;
+        }
+
+        return asset('storage/'.$this->profile_photo_path);
     }
 }
