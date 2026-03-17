@@ -1,14 +1,15 @@
 @php
-    $title = 'Perfil | Atendente';
-    $role = 'attendant';
+    $title = 'Perfil | Admin';
+    $role = 'admin';
     $user = auth()->user();
-    $displayName = $user?->name ?? 'Atendente Secretaria';
-    $email = $user?->email ?? 'atendente@unifap.edu.br';
+    $displayName = $user?->name ?? 'Admin Secretaria';
+    $institutionalEmail = $user?->email ?? 'admin@unifap.edu.br';
+    $personalEmail = $user?->personal_email ?? '';
     $photoUrl = $user?->profilePhotoUrl();
 @endphp
 
-<x-layouts.academic :title="$title" :role="$role" active="perfil" :userName="$displayName" userInitials="AT" :userPhotoUrl="$photoUrl">
-    <section class="rounded-3xl border border-violet-500/20 bg-[#17152f] p-5 shadow-[0_0_0_1px_rgba(99,102,241,0.08)] sm:p-6">
+<x-layouts.academic :title="$title" :role="$role" active="perfil" :userName="$displayName" userInitials="AD" :userPhotoUrl="$photoUrl">
+    <section class="rounded-3xl border border-violet-500/20 bg-zinc-900 p-5 shadow-[0_0_0_1px_rgba(99,102,241,0.08)] sm:p-6">
         @if (session('photo_status'))
             <div class="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">{{ session('photo_status') }}</div>
         @endif
@@ -19,7 +20,7 @@
             <div class="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">{{ session('password_status') }}</div>
         @endif
 
-        <div class="rounded-2xl border border-violet-500/25 bg-[#232144] p-5">
+        <div class="rounded-2xl border border-violet-500/25 bg-zinc-800/80 p-5">
             <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
                     <div class="relative">
@@ -30,17 +31,17 @@
                                 AT
                             </div>
                         @endif
-                        <span class="absolute bottom-1 right-1 size-3 rounded-full border-2 border-[#232144] bg-emerald-400"></span>
+                        <span class="absolute bottom-1 right-1 size-3 rounded-full border-2 border-zinc-800 bg-emerald-400"></span>
                     </div>
                     <div>
-                        <h1 class="text-3xl font-semibold text-white">{{ $displayName }}</h1>
-                        <p class="text-zinc-300">Atendente</p>
+                        <h1 class="text-3xl font-semibold text-zinc-200">{{ $displayName }}</h1>
+                        <p class="text-zinc-300">Admin</p>
                         <div class="mt-2 flex flex-wrap items-center gap-3 text-sm text-zinc-400">
                             <span class="rounded-full bg-emerald-500/20 px-3 py-1 font-medium text-emerald-300">Em serviço</span>
                         </div>
                     </div>
                 </div>
-                <form method="POST" action="{{ route('academic.attendant.profile.photo') }}" enctype="multipart/form-data" class="flex flex-col gap-2 sm:items-end">
+                <form method="POST" action="{{ route('academic.admin.profile.photo') }}" enctype="multipart/form-data" class="flex flex-col gap-2 sm:items-end">
                     @csrf
                     <label class="cursor-pointer rounded-xl border border-zinc-600 px-4 py-2 font-semibold text-white hover:border-violet-400">
                         <span>Alterar foto</span>
@@ -53,47 +54,52 @@
         </div>
 
         <div class="mt-5 grid gap-5 lg:grid-cols-[1.2fr_0.85fr]">
-            <article class="rounded-2xl border border-violet-500/20 bg-[#232144] p-5">
-                <h2 class="text-2xl font-semibold text-white">Dados profissionais</h2>
-                <form method="POST" action="{{ route('academic.attendant.profile.update') }}" class="mt-5 space-y-4">
+            <article class="rounded-2xl border border-violet-500/20 bg-zinc-800/80 p-5">
+                <h2 class="text-2xl font-semibold text-zinc-200">Dados profissionais</h2>
+                <form method="POST" action="{{ route('academic.admin.profile.update') }}" class="mt-5 space-y-4">
                     @csrf
                     @method('PATCH')
                     <div>
                         <label class="mb-2 block text-sm font-medium text-zinc-400">Nome completo</label>
-                        <input type="text" name="name" value="{{ old('name', $displayName) }}" class="w-full rounded-xl border border-zinc-700 bg-[#2f3040] px-4 py-3 text-lg text-white" />
+                        <input type="text" name="name" value="{{ old('name', $displayName) }}" class="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-lg text-zinc-200" />
                         @error('name', 'profileUpdate')<p class="mt-2 text-sm text-rose-300">{{ $message }}</p>@enderror
                     </div>
                     <div>
-                        <label class="mb-2 block text-sm font-medium text-zinc-400">E-mail</label>
-                        <input type="email" name="email" value="{{ old('email', $email) }}" class="w-full rounded-xl border border-zinc-700 bg-[#2f3040] px-4 py-3 text-lg text-white" />
+                        <label class="mb-2 block text-sm font-medium text-zinc-400">E-mail institucional</label>
+                        <input type="email" name="email" value="{{ old('email', $institutionalEmail) }}" class="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-lg text-zinc-200" />
                         @error('email', 'profileUpdate')<p class="mt-2 text-sm text-rose-300">{{ $message }}</p>@enderror
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-zinc-400">E-mail pessoal</label>
+                        <input type="email" name="personal_email" value="{{ old('personal_email', $personalEmail) }}" placeholder="ex: seuemail@gmail.com" class="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-lg text-zinc-200" />
+                        @error('personal_email', 'profileUpdate')<p class="mt-2 text-sm text-rose-300">{{ $message }}</p>@enderror
                     </div>
                     <div class="flex flex-wrap gap-3 pt-2">
                         <button type="submit" class="rounded-xl border border-zinc-600 px-5 py-2.5 text-xl font-semibold text-white hover:border-violet-400">Salvar alterações</button>
-                        <a href="{{ route('academic.attendant.profile') }}" class="rounded-xl border border-zinc-700 px-5 py-2.5 text-xl font-semibold text-zinc-200">Cancelar</a>
+                        <a href="{{ route('academic.admin.profile') }}" class="rounded-xl border border-zinc-700 px-5 py-2.5 text-xl font-semibold text-zinc-200">Cancelar</a>
                     </div>
                 </form>
             </article>
 
-            <article class="rounded-2xl border border-violet-500/20 bg-[#232144] p-5">
-                <h2 class="text-2xl font-semibold text-white">Segurança</h2>
-                <form method="POST" action="{{ route('academic.attendant.profile.password') }}" class="mt-5 space-y-4">
+            <article class="rounded-2xl border border-violet-500/20 bg-zinc-800/80 p-5">
+                <h2 class="text-2xl font-semibold text-zinc-200">Segurança</h2>
+                <form method="POST" action="{{ route('academic.admin.profile.password') }}" class="mt-5 space-y-4">
                     @csrf
                     @method('PATCH')
                     <div class="space-y-4">
                         <div>
                             <label class="mb-2 block text-sm font-medium text-zinc-400">Senha atual</label>
-                            <input type="password" name="current_password" class="w-full rounded-xl border border-zinc-700 bg-[#2f3040] px-4 py-3 text-lg text-white" />
+                            <input type="password" name="current_password" class="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-lg text-zinc-200" />
                             @error('current_password', 'passwordUpdate')<p class="mt-2 text-sm text-rose-300">{{ $message }}</p>@enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-zinc-400">Nova senha</label>
-                            <input type="password" name="password" class="w-full rounded-xl border border-zinc-700 bg-[#2f3040] px-4 py-3 text-lg text-white" />
+                            <input type="password" name="password" class="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-lg text-zinc-200" />
                             @error('password', 'passwordUpdate')<p class="mt-2 text-sm text-rose-300">{{ $message }}</p>@enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-zinc-400">Confirmar nova senha</label>
-                            <input type="password" name="password_confirmation" class="w-full rounded-xl border border-zinc-700 bg-[#2f3040] px-4 py-3 text-lg text-white" />
+                            <input type="password" name="password_confirmation" class="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-lg text-zinc-200" />
                         </div>
                     </div>
                     <div class="pt-4">
@@ -103,10 +109,10 @@
             </article>
         </div>
 
-        <article class="mt-5 rounded-2xl border border-violet-500/20 bg-[#232144] p-5">
+        <article class="mt-5 rounded-2xl border border-violet-500/20 bg-zinc-800/80 p-5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 class="text-2xl font-semibold text-white">Atividade recente</h2>
-                <a href="{{ route('academic.attendant.dashboard') }}" class="text-sm font-medium text-violet-300 hover:text-violet-200">Ver agenda do dia →</a>
+                <h2 class="text-2xl font-semibold text-zinc-200">Atividade recente</h2>
+                <a href="{{ route('academic.admin.dashboard') }}" class="text-sm font-medium text-violet-300 hover:text-violet-200">Ver agenda do dia →</a>
             </div>
 
             <div class="mt-4 divide-y divide-violet-500/10">
@@ -120,7 +126,7 @@
                         <div class="flex items-center gap-3">
                             <span class="size-2.5 rounded-full {{ $item['dot'] }}"></span>
                             <div>
-                                <p class="font-semibold text-white">{{ $item['title'] }}</p>
+                                <p class="font-semibold text-zinc-200">{{ $item['title'] }}</p>
                                 <p class="text-sm text-zinc-400">{{ $item['meta'] }}</p>
                             </div>
                         </div>

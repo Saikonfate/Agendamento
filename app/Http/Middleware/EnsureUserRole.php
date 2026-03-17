@@ -23,13 +23,21 @@ class EnsureUserRole
             return $next($request);
         }
 
-        $targetRoute = $user->role === 'attendant'
-            ? 'academic.attendant.dashboard'
-            : 'academic.student.dashboard';
+        $targetRoute = match ($user->role) {
+            'admin' => 'academic.admin.dashboard',
+            'professor' => 'academic.professor.dashboard',
+            default => 'academic.student.dashboard',
+        };
+
+        $targetLabel = match ($user->role) {
+            'admin' => 'Ir para painel do admin',
+            'professor' => 'Ir para painel do professor',
+            default => 'Ir para painel do aluno',
+        };
 
         return response()->view('errors.403', [
             'targetUrl' => route($targetRoute),
-            'targetLabel' => $user->role === 'attendant' ? 'Ir para painel do atendente' : 'Ir para painel do aluno',
+            'targetLabel' => $targetLabel,
             'message' => 'Seu perfil não possui permissão para acessar esta área.',
         ], 403);
     }

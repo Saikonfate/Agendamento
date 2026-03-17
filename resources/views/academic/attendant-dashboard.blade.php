@@ -1,13 +1,13 @@
 @php
-    $title = 'Painel do Atendente';
-    $role = 'attendant';
-    $displayName = auth()->user()?->name ?? 'Atendente · Sec. Acadêmica';
+    $title = 'Painel do Admin';
+    $role = 'admin';
+    $displayName = auth()->user()?->name ?? 'Admin · Sec. Acadêmica';
 @endphp
 
 <x-layouts.academic :title="$title" :role="$role" active="agenda" :userName="$displayName" userInitials="AT">
     <section class="space-y-5">
         <div>
-            <h1 class="text-4xl font-semibold">Painel do atendente</h1>
+            <h1 class="text-4xl font-semibold">Painel do admin</h1>
             <p class="mt-1 text-zinc-400">Secretaria Acadêmica • Segunda, 16 de março de 2026</p>
         </div>
 
@@ -69,6 +69,22 @@
             </article>
 
             <div class="space-y-4">
+                <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+                    <h3 class="text-3xl font-semibold">Cadastrar aluno</h3>
+                    <form method="POST" action="{{ route('academic.admin.students.store') }}" class="mt-4 space-y-3">
+                        @csrf
+                        <div>
+                            <label class="mb-2 block text-zinc-400">Nome completo</label>
+                            <input type="text" name="name" value="{{ old('name') }}" placeholder="ex: Gabriel Silva" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
+                            @error('name', 'studentCreate')
+                                <p class="mt-1 text-sm text-rose-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <button type="submit" class="w-full rounded-xl border border-zinc-700 px-4 py-2 text-3xl font-semibold hover:border-violet-400">Cadastrar aluno</button>
+                        <p class="border-l border-zinc-700 pl-3 text-sm italic text-zinc-500">A matrícula e o e-mail institucional são gerados automaticamente. Senha padrão: 123456.</p>
+                    </form>
+                </article>
+
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <h3 class="text-3xl font-semibold">Gerenciar disponibilidade</h3>
                     <form class="mt-4 space-y-3">

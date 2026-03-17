@@ -4,9 +4,33 @@
     $user = auth()->user();
     $displayName = $user?->name ?? 'Gabriel Silva';
     $firstName = str($displayName)->before(' ');
+    $mustChangePassword = (bool) ($user?->must_change_password ?? false);
+    $activeCount = $activeCount ?? 0;
+    $completedCount = $completedCount ?? 0;
+    $todayAvailableCount = $todayAvailableCount ?? 0;
+    $upcomingAppointments = collect($upcomingAppointments ?? []);
+    $notices = collect($notices ?? []);
+    $availableSlotsToday = collect($availableSlotsToday ?? []);
+    $todayLabel = $todayLabel ?? now()->format('d/m/Y');
 @endphp
 
 <x-layouts.academic :title="$title" :role="$role" active="inicio" :userName="$displayName">
+    @if ($mustChangePassword)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+            <div class="w-full max-w-xl rounded-2xl border border-violet-500/30 bg-zinc-900 p-6 shadow-2xl">
+                <h2 class="text-3xl font-semibold text-white">Altere sua senha no primeiro acesso</h2>
+                <p class="mt-3 text-zinc-300">
+                    Para continuar usando o sistema com segurança, troque agora a senha padrão da sua conta.
+                </p>
+                <div class="mt-6 flex justify-end">
+                    <a href="{{ route('academic.student.profile') }}" class="rounded-xl border border-violet-400 px-5 py-2.5 text-xl font-semibold text-white hover:bg-violet-500/20">
+                        Alterar senha agora
+                    </a>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <section class="space-y-5">
         <div>
             <h1 class="text-4xl font-semibold">Olá, {{ $firstName }} 👋</h1>
@@ -14,7 +38,7 @@
         </div>
 
         <div class="grid gap-4 md:grid-cols-3">
-            @foreach ([['2', 'Agendamentos ativos'], ['5', 'Atendimentos realizados'], ['3', 'Horários disponíveis hoje']] as [$value, $label])
+            @foreach ([[$activeCount, 'Agendamentos ativos'], [$completedCount, 'Atendimentos realizados'], [$todayAvailableCount, 'Horários disponíveis hoje']] as [$value, $label])
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <p class="text-4xl font-bold">{{ $value }}</p>
                     <p class="text-zinc-400">{{ $label }}</p>
@@ -26,18 +50,16 @@
             <article class="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 lg:col-span-2">
                 <h2 class="text-3xl font-semibold">Próximos agendamentos</h2>
                 <div class="space-y-5 border-t border-zinc-800 pt-4">
-                    <div class="border-l border-zinc-700 pl-4">
-                        <p class="text-zinc-400">Seg, 16 Mar · 09:00</p>
-                        <p class="text-2xl font-semibold">Orientação de TCC</p>
-                        <p class="text-zinc-400">Prof. Ramon Felizardo · Sala 204</p>
-                        <span class="mt-2 inline-flex rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">Confirmado</span>
-                    </div>
-                    <div class="border-l border-zinc-700 pl-4">
-                        <p class="text-zinc-400">Qua, 18 Mar · 14:00</p>
-                        <p class="text-2xl font-semibold">Revisão de prova</p>
-                        <p class="text-zinc-400">Sec. Acadêmica · Balcão 02</p>
-                        <span class="mt-2 inline-flex rounded-full bg-amber-500/20 px-3 py-1 text-sm text-amber-300">Pendente</span>
-                    </div>
+                    @forelse ($upcomingAppointments as $appointment)
+                        <div class="border-l border-zinc-700 pl-4">
+                            <p class="text-zinc-400">{{ $appointment->scheduled_at->locale('pt_BR')->translatedFormat('D, d M') }} · {{ $appointment->scheduled_at->format('H:i') }}</p>
+                            <p class="text-2xl font-semibold">{{ $appointment->subject }}</p>
+                            <p class="text-zinc-400">{{ $appointment->attendant_name }}</p>
+                            <span class="mt-2 inline-flex rounded-full px-3 py-1 text-sm {{ $appointment->status === 'Confirmado' ? 'bg-blue-500/20 text-blue-300' : ($appointment->status === 'Pendente' ? 'bg-amber-500/20 text-amber-300' : ($appointment->status === 'Cancelado' ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300')) }}">{{ $appointment->status }}</span>
+                        </div>
+                    @empty
+                        <p class="text-zinc-400">Nenhum agendamento futuro.</p>
+                    @endforelse
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <a href="{{ route('academic.student.new') }}" class="rounded-xl border border-zinc-700 px-5 py-2 text-3xl font-semibold hover:border-violet-400">+ Novo agendamento</a>
@@ -61,22 +83,24 @@
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <h3 class="text-3xl font-semibold">Avisos</h3>
                     <ul class="mt-4 space-y-3 text-zinc-300">
-                        <li>📌 Secretaria fechada dia 19/03 (feriado)</li>
-                        <li>📄 Prazo para requerimentos: 25/03</li>
+                        @forelse ($notices as $notice)
+                            <li>{{ $notice->tone === 'amber' ? '📌' : '📄' }} {{ $notice->message }}</li>
+                        @empty
+                            <li>Nenhum aviso no momento.</li>
+                        @endforelse
                     </ul>
                 </article>
             </div>
         </div>
 
         <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 lg:max-w-4xl">
-            <h3 class="text-3xl font-semibold">Horários disponíveis hoje — 16/03/2026</h3>
+            <h3 class="text-3xl font-semibold">Horários disponíveis hoje — {{ $todayLabel }}</h3>
             <p class="mt-2 text-sm italic text-zinc-500">Verde = disponível · Cinza = ocupado · Destaque = selecionado</p>
             <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                @foreach (['08:00' => 'off', '08:30' => 'off', '09:00' => 'on', '09:30' => 'on', '10:00' => 'off', '10:30' => 'off', '11:00' => 'off', '11:30' => 'on', '13:00' => 'off', '13:30' => 'off', '14:00' => 'on', '14:30' => 'off'] as $time => $status)
-                    <button class="rounded-lg border px-4 py-2 text-lg {{ $status === 'on' ? 'border-emerald-700 bg-emerald-700/35 text-emerald-300' : 'border-zinc-800 bg-zinc-800 text-zinc-500 line-through' }}">{{ $time }}</button>
+                @foreach ($availableSlotsToday as $slot)
+                    <button class="rounded-lg border px-4 py-2 text-lg {{ $slot['available'] ? 'border-emerald-700 bg-emerald-700/35 text-emerald-300' : 'border-zinc-800 bg-zinc-800 text-zinc-500 line-through' }}">{{ $slot['time'] }}</button>
                 @endforeach
             </div>
-            <button class="mt-4 rounded-xl border border-zinc-700 px-5 py-2 text-3xl font-semibold hover:border-violet-400">Agendar um horário</button>
         </article>
     </section>
 </x-layouts.academic>

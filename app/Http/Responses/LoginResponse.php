@@ -15,9 +15,11 @@ class LoginResponse implements LoginResponseContract
         /** @var Request $request */
         $user = $request->user();
 
-        $target = $user?->role === 'attendant'
-            ? route('academic.attendant.dashboard')
-            : route('academic.student.dashboard');
+        $target = match ($user?->role) {
+            'admin' => route('academic.admin.dashboard'),
+            'professor' => route('academic.professor.dashboard'),
+            default => route('academic.student.dashboard'),
+        };
 
         return $request->wantsJson()
             ? response()->json(['two_factor' => false, 'redirect' => $target])

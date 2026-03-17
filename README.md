@@ -77,8 +77,12 @@ O aplicativo estará disponível em `http://localhost:8000`
 - **E-mail:** `aluno@unifap.edu.br`
 - **Senha:** `password`
 
-### Atendente
-- **E-mail:** `atendente@unifap.edu.br`
+### Admin
+- **E-mail:** `admin@unifap.edu.br`
+- **Senha:** `password`
+
+### Professor
+- **E-mail:** `professor@unifap.edu.br`
 - **Senha:** `password`
 
 ## 📁 Estrutura do Projeto

@@ -11,21 +11,145 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-    --color-zinc-50: #fafafa;
-    --color-zinc-100: #f5f5f5;
-    --color-zinc-200: #e5e5e5;
-    --color-zinc-300: #d4d4d4;
-    --color-zinc-400: #a3a3a3;
-    --color-zinc-500: #737373;
-    --color-zinc-600: #525252;
-    --color-zinc-700: #404040;
-    --color-zinc-800: #262626;
-    --color-zinc-900: #171717;
-    --color-zinc-950: #0a0a0a;
+    --color-zinc-50: #fafaf7;
+    --color-zinc-100: #0f3d2f;
+    --color-zinc-200: #064e3b;
+    --color-zinc-300: #047857;
+    --color-zinc-400: #6b7280;
+    --color-zinc-500: #9ca3af;
+    --color-zinc-600: #b7c0b3;
+    --color-zinc-700: #e5e7e0;
+    --color-zinc-800: #d1e0d0;
+    --color-zinc-900: #f0f4ee;
+    --color-zinc-950: #fafaf7;
+
+    --color-violet-200: #d1fae5;
+    --color-violet-300: #34d399;
+    --color-violet-400: #10b981;
+    --color-violet-500: #047857;
+
+    --color-emerald-200: #d1fae5;
+    --color-emerald-300: #047857;
+    --color-emerald-400: #059669;
+    --color-emerald-500: #047857;
+
+    --color-amber-200: #fed7aa;
+    --color-amber-300: #d97706;
+    --color-amber-400: #b45309;
+    --color-amber-500: #92400e;
+
+    --color-rose-200: #fecaca;
+    --color-rose-300: #dc2626;
+    --color-rose-400: #b91c1c;
+    --color-rose-500: #991b1b;
+
+    --color-blue-200: #bfdbfe;
+    --color-blue-300: #2563eb;
+    --color-blue-400: #1d4ed8;
+    --color-blue-500: #1e40af;
 
     --color-accent: var(--color-neutral-800);
     --color-accent-content: var(--color-neutral-800);
     --color-accent-foreground: var(--color-white);
+}
+
+@layer utilities {
+    .bg-\[\#17152f\] {
+        background-color: #f0f4ee;
+    }
+
+    .bg-\[\#232144\] {
+        background-color: #f0f4ee;
+    }
+
+    .bg-\[\#2f3040\] {
+        background-color: #f0f4ee;
+    }
+
+    .border-\[\#232144\] {
+        border-color: #d1e0d0;
+    }
+
+    .bg-emerald-500\/20,
+    .bg-emerald-500\/10 {
+        background-color: #d1fae5;
+    }
+
+    .text-emerald-300,
+    .text-emerald-200 {
+        color: #047857;
+    }
+
+    .border-emerald-500\/40,
+    .border-emerald-500\/30 {
+        border-color: #a7f3d0;
+    }
+
+    .bg-amber-500\/20,
+    .bg-amber-500\/10 {
+        background-color: #ffedd5;
+    }
+
+    .text-amber-300,
+    .text-amber-200 {
+        color: #d97706;
+    }
+
+    .border-amber-500\/40,
+    .border-amber-500\/30 {
+        border-color: #fdba74;
+    }
+
+    .bg-rose-500\/20,
+    .bg-rose-500\/10 {
+        background-color: #fee2e2;
+    }
+
+    .text-rose-300,
+    .text-rose-200 {
+        color: #dc2626;
+    }
+
+    .border-rose-500\/40,
+    .border-rose-500\/30 {
+        border-color: #fca5a5;
+    }
+
+    .bg-blue-500\/20,
+    .bg-blue-500\/10 {
+        background-color: #dbeafe;
+    }
+
+    .text-blue-300,
+    .text-blue-200 {
+        color: #2563eb;
+    }
+
+    .border-blue-500\/40,
+    .border-blue-500\/30 {
+        border-color: #93c5fd;
+    }
+
+    main :where(h1, h2, h3, h4, h5, h6, p, span, td, th, label, input, textarea, select).text-white {
+        color: var(--color-zinc-200);
+    }
+
+    main :where(button, a).text-white {
+        color: var(--color-zinc-200);
+    }
+
+    main :where(button, a).text-white:hover {
+        color: var(--color-zinc-200);
+    }
+
+    main :where(button, a).rounded-xl.border {
+        border-color: var(--color-zinc-800);
+    }
+
+    main :where(button, a).rounded-xl.border:hover {
+        border-color: var(--color-violet-300);
+        background-color: color-mix(in oklab, var(--color-violet-200) 16%, transparent);
+    }
 }
 
 @layer theme {
@@ -78,7 +202,7 @@ select:focus[data-flux-control] {
     input:focus,
     select:focus,
     textarea:focus {
-        box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.18);
+        box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.25);
     }
 }
 

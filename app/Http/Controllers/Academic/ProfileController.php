@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Academic;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -20,19 +22,41 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        $rules = $this->profileRules($user->id);
+        $rules = [
+            'name' => ['required', 'string', 'max:255'],
+            'personal_email' => [
+                'nullable',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique(User::class, 'personal_email')->ignore($user->id),
+            ],
+        ];
+
+        if ($user->role !== 'student') {
+            $rules['email'] = [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique(User::class, 'email')->ignore($user->id),
+            ];
+        }
 
         $validated = $request->validateWithBag('profileUpdate', $rules, [
             'name.required' => 'O nome é obrigatório.',
             'name.max'      => 'O nome deve ter no máximo :max caracteres.',
-            'email.required' => 'O e-mail é obrigatório.',
+            'email.required' => 'O e-mail institucional é obrigatório.',
             'email.email'   => 'Informe um e-mail válido.',
             'email.unique'  => 'Este e-mail já está em uso.',
+            'personal_email.email' => 'Informe um e-mail pessoal válido.',
+            'personal_email.unique' => 'Este e-mail pessoal já está em uso.',
         ]);
 
-        // Students cannot change their matricula
+        // Students cannot change institutional data from profile
         if ($user->role === 'student') {
             unset($validated['matricula']);
+            unset($validated['email']);
         }
 
         $user->fill($validated);
@@ -59,6 +83,7 @@ class ProfileController extends Controller
 
         $request->user()->forceFill([
             'password' => $validated['password'],
+            'must_change_password' => false,
         ])->save();
 
         return back()->with('password_status', 'Senha atualizada com sucesso.');
