@@ -17,6 +17,7 @@ class ProfilePageController extends Controller
         $registration = (string) ($request->user()?->matricula ?? '');
 
         $recentActivities = Appointment::query()
+            ->with('attendantUser:id,name')
             ->where('student_registration', $registration)
             ->latest('scheduled_at')
             ->limit(6)
@@ -24,7 +25,7 @@ class ProfilePageController extends Controller
             ->map(fn (Appointment $appointment) => [
                 'dot' => $this->statusDotClass($appointment->status, true),
                 'title' => $appointment->subject,
-                'meta' => $appointment->attendant_name.' · '.$appointment->scheduled_at->locale('pt_BR')->translatedFormat('D, d/m · H:i'),
+                'meta' => $appointment->attendant_display_name.' · '.$appointment->scheduled_at->locale('pt_BR')->translatedFormat('D, d/m · H:i'),
                 'status' => $appointment->status,
                 'statusClass' => $this->statusBadgeClass($appointment->status, true),
             ]);
@@ -37,6 +38,7 @@ class ProfilePageController extends Controller
     public function admin(): View
     {
         $appointmentActivities = Appointment::query()
+            ->with('attendantUser:id,name')
             ->latest('updated_at')
             ->limit(8)
             ->get()
@@ -50,6 +52,7 @@ class ProfilePageController extends Controller
             ]);
 
         $blockedActivities = BlockedDate::query()
+            ->with('attendantUser:id,name')
             ->latest('updated_at')
             ->limit(5)
             ->get()
@@ -57,7 +60,7 @@ class ProfilePageController extends Controller
                 'occurred_at' => $blockedDate->updated_at,
                 'dot' => 'bg-zinc-400',
                 'title' => 'Data bloqueada',
-                'meta' => Carbon::parse($blockedDate->blocked_date)->format('d/m/Y').' · '.$blockedDate->reason.($blockedDate->attendant_name ? ' · '.$blockedDate->attendant_name : ' · Todos os atendentes'),
+                'meta' => Carbon::parse($blockedDate->blocked_date)->format('d/m/Y').' · '.$blockedDate->reason.($blockedDate->attendant_display_name !== '' ? ' · '.$blockedDate->attendant_display_name : ' · Todos os atendentes'),
                 'status' => 'Bloqueado',
                 'statusClass' => 'bg-zinc-700 text-zinc-200',
             ]);
@@ -96,6 +99,7 @@ class ProfilePageController extends Controller
         }
 
         $recentActivities = $query
+            ->with('attendantUser:id,name')
             ->limit(8)
             ->get()
             ->map(fn (Appointment $appointment) => [

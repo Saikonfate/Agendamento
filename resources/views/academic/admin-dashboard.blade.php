@@ -27,7 +27,7 @@
                 'time_range' => $timeRange,
                 'student' => $appointment->student_name,
                 'registration' => $appointment->student_registration,
-                'attendant' => $appointment->attendant_name,
+                'attendant' => $appointment->attendant_display_name,
                 'subject' => $appointment->subject,
                 'status' => $appointment->status,
                 'cancellation_reason' => $appointment->cancellation_reason,
@@ -43,7 +43,7 @@
     $vacancyTotal = $vacancyCount ?? 4;
     $confirmedTotal = $appointmentsCollection->where('status', 'Confirmado')->count();
     $attendants = $appointmentsCollection
-        ->pluck('attendant_name')
+        ->pluck('attendant_display_name')
         ->filter()
         ->unique()
         ->sort()

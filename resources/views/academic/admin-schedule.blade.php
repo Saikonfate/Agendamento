@@ -4,7 +4,8 @@
     $displayName = auth()->user()?->name ?? 'Admin · Sec. Acadêmica';
     $blockedDates = collect($blockedDates ?? []);
     $attendants = collect($attendants ?? []);
-    $selectedAttendant = $selectedAttendant ?? (string) $attendants->first();
+    $selectedAttendantKey = $selectedAttendantKey ?? ((array) $attendants->first())['key'] ?? '';
+    $selectedAttendantName = $selectedAttendantName ?? ((array) $attendants->first())['name'] ?? '';
     $schedule = $schedule ?? [
         'working_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
         'start_time' => '08:00',
@@ -32,7 +33,7 @@
                             <label class="mb-2 block text-zinc-400">Atendente / Professor</label>
                             <select name="attendant" onchange="this.form.submit()" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2">
                                 @foreach ($attendants as $attendant)
-                                    <option value="{{ $attendant }}" @selected($selectedAttendant === $attendant)>{{ $attendant }}</option>
+                                    <option value="{{ $attendant['key'] }}" @selected($selectedAttendantKey === $attendant['key'])>{{ $attendant['name'] }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -40,7 +41,7 @@
 
                     <form method="POST" action="{{ route('academic.admin.schedule.settings.store') }}" class="mt-4 space-y-4">
                         @csrf
-                        <input type="hidden" name="attendant_name" value="{{ $selectedAttendant }}">
+                        <input type="hidden" name="attendant_key" value="{{ $selectedAttendantKey }}">
 
                         <div>
                             <label class="mb-2 block text-zinc-400">Disponibilidade por dia</label>
@@ -124,7 +125,7 @@
                             <div class="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2.5">
                                 <div>
                                     <p class="font-semibold text-white">{{ $blockedDate->blocked_date->format('d/m/Y') }}</p>
-                                    <p class="text-sm text-zinc-400">{{ $blockedDate->reason }}{{ $blockedDate->attendant_name ? ' · '.$blockedDate->attendant_name : ' · Todos os atendentes' }}</p>
+                                    <p class="text-sm text-zinc-400">{{ $blockedDate->reason }}{{ $blockedDate->attendant_display_name !== '' ? ' · '.$blockedDate->attendant_display_name : ' · Todos os atendentes' }}</p>
                                 </div>
                                 <form method="POST" action="{{ route('academic.admin.schedule.blocked-dates.destroy', $blockedDate) }}">
                                     @csrf
@@ -221,10 +222,10 @@
 
                 <div>
                     <label class="mb-2 block text-zinc-400">Aplicar para</label>
-                    <select name="attendant_name" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2">
+                    <select name="attendant_key" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2">
                         <option value="all">Todos os atendentes</option>
                         @foreach ($attendants as $attendant)
-                            <option value="{{ $attendant }}">{{ $attendant }}</option>
+                            <option value="{{ $attendant['key'] }}">{{ $attendant['name'] }}</option>
                         @endforeach
                     </select>
                 </div>

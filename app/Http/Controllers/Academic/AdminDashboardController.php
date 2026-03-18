@@ -15,6 +15,7 @@ class AdminDashboardController extends Controller
         $today = Carbon::today();
 
         $appointments = Appointment::query()
+            ->with('attendantUser:id,name')
             ->whereDate('scheduled_at', $today)
             ->orderBy('scheduled_at')
             ->get();

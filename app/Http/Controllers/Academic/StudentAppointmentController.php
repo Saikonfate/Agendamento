@@ -27,6 +27,7 @@ class StudentAppointmentController extends Controller
         $registration = (string) ($user->matricula ?? '');
 
         $appointments = Appointment::query()
+            ->with('attendantUser:id,name')
             ->where('student_registration', $registration)
             ->orderBy('scheduled_at')
             ->get();
@@ -67,17 +68,32 @@ class StudentAppointmentController extends Controller
             ? Carbon::parse($request->string('date')->toString())
             : Carbon::today()->addDay();
 
-        $attendantFilter = old('attendant_name', $request->string('attendant')->toString());
+        $attendantFilter = old('attendant_key', $request->string('attendant')->toString());
+
+        if ($attendantFilter === '' && $request->filled('attendant_user_id')) {
+            $attendantFilter = 'user:'.$request->integer('attendant_user_id');
+        }
+
+        if ($attendantFilter === '' && $request->filled('attendant_name')) {
+            $attendantFilter = 'name:'.$request->string('attendant_name')->toString();
+        }
+
         $subject = $request->string('subject')->toString();
 
         $attendants = $this->availableAttendants();
 
-        if ($attendantFilter === '' || ! $attendants->contains($attendantFilter)) {
-            $attendantFilter = (string) $attendants->first();
+        if ($attendantFilter === '' || ! $attendants->contains(fn (array $attendant) => $attendant['key'] === $attendantFilter)) {
+            $firstAttendant = $attendants->first();
+            $attendantFilter = is_array($firstAttendant) ? (string) ($firstAttendant['key'] ?? '') : '';
         }
 
-        $attendantName = $attendantFilter !== '' ? $attendantFilter : null;
-        $slots = $this->buildSlotsForDate($date, $attendantName);
+        $selectedAttendant = $attendants
+            ->first(fn (array $attendant) => $attendant['key'] === $attendantFilter);
+
+        $attendantName = is_array($selectedAttendant) ? (string) ($selectedAttendant['name'] ?? '') : null;
+        $attendantUserId = is_array($selectedAttendant) ? ($selectedAttendant['user_id'] ?? null) : null;
+
+        $slots = $this->buildSlotsForDate($date, $attendantName, $attendantUserId);
 
         $monthStart = $date->copy()->startOfMonth();
         $daysInMonth = $monthStart->daysInMonth;
@@ -88,13 +104,21 @@ class StudentAppointmentController extends Controller
         $calendarDaysByAttendant = [];
 
         foreach ($attendants as $attendant) {
+            $attendantKey = (string) ($attendant['key'] ?? '');
+            $attendantNameInLoop = (string) ($attendant['name'] ?? '');
+            $attendantUserIdInLoop = $attendant['user_id'] ?? null;
+
+            if ($attendantKey === '' || $attendantNameInLoop === '') {
+                continue;
+            }
+
             $attendantDateSlots = [];
             $attendantCalendarDays = [];
 
             foreach (range(1, $daysInMonth) as $day) {
                 $dayDate = $monthStart->copy()->day($day);
                 $dateKey = $dayDate->format('Y-m-d');
-                $dateSlots = $this->buildSlotsForDate($dayDate, $attendant);
+                $dateSlots = $this->buildSlotsForDate($dayDate, $attendantNameInLoop, $attendantUserIdInLoop);
                 $availableCount = collect($dateSlots)->where('available', true)->count();
 
                 $attendantDateSlots[$dateKey] = $dateSlots;
@@ -104,18 +128,18 @@ class StudentAppointmentController extends Controller
                     'isToday' => $dayDate->isToday(),
                     'isSelected' => $dayDate->isSameDay($date),
                     'hasAvailability' => $availableCount > 0,
-                    'isSystemDay' => $this->isSystemWorkingDay($dayDate, $attendant),
+                    'isSystemDay' => $this->isSystemWorkingDay($dayDate, $attendantNameInLoop, $attendantUserIdInLoop),
                 ];
             }
 
-            $slotsByDateByAttendant[$attendant] = $attendantDateSlots;
-            $calendarDaysByAttendant[$attendant] = $attendantCalendarDays;
+            $slotsByDateByAttendant[$attendantKey] = $attendantDateSlots;
+            $calendarDaysByAttendant[$attendantKey] = $attendantCalendarDays;
         }
 
         foreach (range(1, $daysInMonth) as $day) {
             $dayDate = $monthStart->copy()->day($day);
             $dateKey = $dayDate->format('Y-m-d');
-            $dateSlots = $this->buildSlotsForDate($dayDate, $attendantName);
+            $dateSlots = $this->buildSlotsForDate($dayDate, $attendantName, $attendantUserId);
             $availableCount = collect($dateSlots)->where('available', true)->count();
 
             $slotsByDate[$dateKey] = $dateSlots;
@@ -125,14 +149,15 @@ class StudentAppointmentController extends Controller
                 'isToday' => $dayDate->isToday(),
                 'isSelected' => $dayDate->isSameDay($date),
                 'hasAvailability' => $availableCount > 0,
-                'isSystemDay' => $this->isSystemWorkingDay($dayDate),
+                'isSystemDay' => $this->isSystemWorkingDay($dayDate, $attendantName, $attendantUserId),
             ];
         }
 
         return view('academic.student-new', [
             'attendants' => $attendants,
             'selectedDate' => $date,
-            'selectedAttendant' => $attendantName,
+            'selectedAttendantKey' => $attendantFilter,
+            'selectedAttendantName' => $attendantName,
             'subject' => $subject,
             'slots' => $slots,
             'slotsByDate' => $slotsByDate,
@@ -150,26 +175,53 @@ class StudentAppointmentController extends Controller
         $registration = (string) ($user->matricula ?? '');
 
         $validated = $request->validate([
-            'attendant_name' => ['required', 'string', 'max:255'],
+            'attendant_key' => ['nullable', 'string', 'required_without:attendant_name'],
+            'attendant_name' => ['nullable', 'string', 'max:255', 'required_without:attendant_key'],
             'subject' => ['required', 'string', 'max:255'],
             'date' => ['required', 'date'],
             'time' => ['required', 'date_format:H:i'],
         ], [
-            'attendant_name.required' => 'Selecione o atendente.',
+            'attendant_key.required_without' => 'Selecione o atendente.',
+            'attendant_name.required_without' => 'Selecione o atendente.',
             'subject.required' => 'Informe o motivo do atendimento.',
             'date.required' => 'Selecione a data.',
             'time.required' => 'Selecione o horário.',
         ]);
 
+        $attendantName = null;
+        $attendantUserId = null;
+
+        if (! empty($validated['attendant_key'] ?? null)) {
+            $selectedAttendant = $this->availableAttendants()
+                ->first(fn (array $attendant) => $attendant['key'] === $validated['attendant_key']);
+
+            if (is_array($selectedAttendant)) {
+                $attendantName = (string) ($selectedAttendant['name'] ?? '');
+                $attendantUserId = $selectedAttendant['user_id'] ?? null;
+            }
+        }
+
+        if (! $attendantName && ! empty($validated['attendant_name'] ?? null)) {
+            $identity = $this->scheduling->resolveAttendant($validated['attendant_name']);
+            $attendantName = $validated['attendant_name'];
+            $attendantUserId = $identity['user_id'];
+        }
+
+        if (! $attendantName) {
+            return back()->withInput()->withErrors([
+                'attendant_key' => 'Selecione um atendente válido.',
+            ]);
+        }
+
         $scheduledAt = Carbon::createFromFormat('Y-m-d H:i', $validated['date'].' '.$validated['time']);
 
-        if (! $this->isSystemWorkingDay($scheduledAt)) {
+        if (! $this->isSystemWorkingDay($scheduledAt, $attendantName, $attendantUserId)) {
             return back()->withInput()->withErrors([
                 'date' => 'Esta data não está disponível no calendário do sistema.',
             ]);
         }
 
-        $availableSlots = $this->buildSlotsForDate($scheduledAt, $validated['attendant_name']);
+        $availableSlots = $this->buildSlotsForDate($scheduledAt, $attendantName, $attendantUserId);
         $slotAvailable = collect($availableSlots)
             ->contains(fn (array $slot) => $slot['time'] === $validated['time'] && $slot['available'] === true);
 
@@ -179,12 +231,10 @@ class StudentAppointmentController extends Controller
             ]);
         }
 
-        $attendantIdentity = $this->scheduling->resolveAttendant($validated['attendant_name']);
-
         $conflict = $this->scheduling->hasActiveConflict(
             $scheduledAt,
-            $validated['attendant_name'],
-            $attendantIdentity['user_id'],
+            $attendantName,
+            $attendantUserId,
         );
 
         if ($conflict) {
@@ -196,8 +246,8 @@ class StudentAppointmentController extends Controller
         Appointment::query()->create([
             'student_name' => $user->name,
             'student_registration' => $registration,
-            'attendant_name' => $validated['attendant_name'],
-            'attendant_user_id' => $attendantIdentity['user_id'],
+            'attendant_name' => $attendantName,
+            'attendant_user_id' => $attendantUserId,
             'subject' => $validated['subject'],
             'scheduled_at' => $scheduledAt,
             'status' => 'Pendente',
@@ -215,6 +265,7 @@ class StudentAppointmentController extends Controller
         $search = $request->string('q')->toString();
 
         $query = Appointment::query()
+            ->with('attendantUser:id,name')
             ->where('student_registration', $registration)
             ->orderByDesc('scheduled_at');
 
@@ -261,41 +312,41 @@ class StudentAppointmentController extends Controller
         return back()->with('status', 'Agendamento cancelado com sucesso.');
     }
 
-    private function buildSlotsForDate(Carbon $date, ?string $attendantFilter = null): array
+    private function buildSlotsForDate(Carbon $date, ?string $attendantFilter = null, ?int $attendantUserId = null): array
     {
-        return $this->scheduling->buildSlotsForDate($date, $attendantFilter);
+        return $this->scheduling->buildSlotsForDate($date, $attendantFilter, $attendantUserId);
     }
 
-    private function availableSlotsCountForDate(Carbon $date, ?string $attendantFilter = null): int
+    private function availableSlotsCountForDate(Carbon $date, ?string $attendantFilter = null, ?int $attendantUserId = null): int
     {
-        return collect($this->buildSlotsForDate($date, $attendantFilter))
+        return collect($this->buildSlotsForDate($date, $attendantFilter, $attendantUserId))
             ->where('available', true)
             ->count();
     }
 
-    private function systemWorkingSlots(Carbon $date, ?string $attendantName = null): array
+    private function systemWorkingSlots(Carbon $date, ?string $attendantName = null, ?int $attendantUserId = null): array
     {
-        return collect($this->scheduling->buildSlotsForDate($date, $attendantName))
+        return collect($this->scheduling->buildSlotsForDate($date, $attendantName, $attendantUserId))
             ->pluck('time')
             ->all();
     }
 
-    private function isSystemWorkingDay(Carbon $date, ?string $attendantName = null): bool
+    private function isSystemWorkingDay(Carbon $date, ?string $attendantName = null, ?int $attendantUserId = null): bool
     {
-        return $this->scheduling->isSystemWorkingDay($date, $attendantName);
+        return $this->scheduling->isSystemWorkingDay($date, $attendantName, $attendantUserId);
     }
 
     /**
      * @return array{working_days: array<int, string>, start_time: string, end_time: string, break_start: string|null, break_end: string|null, slot_duration_minutes: int}
      */
-    private function resolveScheduleForDate(?string $attendantName, Carbon $date): array
+    private function resolveScheduleForDate(?string $attendantName, Carbon $date, ?int $attendantUserId = null): array
     {
-        return $this->scheduling->resolveScheduleForDate($date, $attendantName);
+        return $this->scheduling->resolveScheduleForDate($date, $attendantName, $attendantUserId);
     }
 
-    private function isDateBlocked(Carbon $date, ?string $attendantName = null): bool
+    private function isDateBlocked(Carbon $date, ?string $attendantName = null, ?int $attendantUserId = null): bool
     {
-        return $this->scheduling->isDateBlocked($date, $attendantName);
+        return $this->scheduling->isDateBlocked($date, $attendantName, $attendantUserId);
     }
 
     private function resolveSchedule(?string $attendantName = null): array
@@ -332,38 +383,76 @@ class StudentAppointmentController extends Controller
 
     private function availableAttendants(): Collection
     {
-        $appointmentAttendants = Appointment::query()
-            ->select('attendant_name')
-            ->whereNotNull('attendant_name')
-            ->where('attendant_name', '!=', '')
-            ->distinct()
-            ->pluck('attendant_name');
+        $attendants = [];
 
-        $scheduledAttendants = AttendantSchedule::query()
-            ->select('attendant_name')
-            ->whereNotNull('attendant_name')
-            ->where('attendant_name', '!=', '')
-            ->pluck('attendant_name');
+        $addAttendant = function (string $name, ?int $userId = null) use (&$attendants): void {
+            $name = trim($name);
+            if ($name === '') {
+                return;
+            }
 
-        $professorAttendants = User::query()
+            $key = $userId ? 'user:'.$userId : 'name:'.$name;
+            if (array_key_exists($key, $attendants)) {
+                return;
+            }
+
+            $attendants[$key] = [
+                'key' => $key,
+                'name' => $name,
+                'user_id' => $userId,
+            ];
+        };
+
+        User::query()
             ->where('role', 'professor')
-            ->pluck('name')
-            ->map(fn (string $name) => $this->normalizeProfessorAttendantName($name));
+            ->get(['id', 'name'])
+            ->each(function (User $user) use ($addAttendant): void {
+                $addAttendant($this->normalizeProfessorAttendantName($user->name), $user->id);
+            });
 
-        $attendants = $appointmentAttendants
-            ->merge($scheduledAttendants)
-            ->merge($professorAttendants)
-            ->filter(fn ($name) => is_string($name) && trim($name) !== '')
-            ->map(fn (string $name) => trim($name))
-            ->unique()
-            ->sort()
-            ->values();
+        AttendantSchedule::query()
+            ->where(function ($query) {
+                $query->whereNotNull('attendant_user_id')
+                    ->orWhere(function ($innerQuery) {
+                        $innerQuery->whereNotNull('attendant_name')->where('attendant_name', '!=', '');
+                    });
+            })
+            ->get(['attendant_name', 'attendant_user_id'])
+            ->each(function (AttendantSchedule $schedule) use ($addAttendant): void {
+                $resolved = $this->scheduling->resolveAttendant($schedule->attendant_name ?? '', $schedule->attendant_user_id);
+                $resolvedName = trim((string) ($resolved['name'] ?? $schedule->attendant_name ?? ''));
 
-        if ($attendants->isEmpty()) {
-            return collect(['Sec. Acadêmica', 'Prof. Ramon', 'Prof. Ana Lima']);
+                if ($resolvedName !== '') {
+                    $addAttendant($resolvedName, $resolved['user_id'] ?? null);
+                }
+            });
+
+        Appointment::query()
+            ->where(function ($query) {
+                $query->whereNotNull('attendant_user_id')
+                    ->orWhere(function ($innerQuery) {
+                        $innerQuery->whereNotNull('attendant_name')->where('attendant_name', '!=', '');
+                    });
+            })
+            ->get(['attendant_name', 'attendant_user_id'])
+            ->each(function (Appointment $appointment) use ($addAttendant): void {
+                $resolved = $this->scheduling->resolveAttendant($appointment->attendant_name ?? '', $appointment->attendant_user_id);
+                $resolvedName = trim((string) ($resolved['name'] ?? $appointment->attendant_name ?? ''));
+
+                if ($resolvedName !== '') {
+                    $addAttendant($resolvedName, $resolved['user_id'] ?? null);
+                }
+            });
+
+        if (empty($attendants)) {
+            $addAttendant('Sec. Acadêmica');
+            $addAttendant('Prof. Ramon');
+            $addAttendant('Prof. Ana Lima');
         }
 
-        return $attendants;
+        return collect(array_values($attendants))
+            ->sortBy('name')
+            ->values();
     }
 
     private function normalizeProfessorAttendantName(string $name): string

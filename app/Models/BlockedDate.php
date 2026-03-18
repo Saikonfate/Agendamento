@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  * @property string $reason
  * @property string|null $attendant_name
  * @property int|null $attendant_user_id
+ * @property-read string $attendant_display_name
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -37,5 +38,12 @@ class BlockedDate extends Model
     public function attendantUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'attendant_user_id');
+    }
+
+    public function getAttendantDisplayNameAttribute(): string
+    {
+        $relationName = trim((string) ($this->attendantUser?->name ?? ''));
+
+        return $relationName !== '' ? $relationName : (string) ($this->attendant_name ?? '');
     }
 }

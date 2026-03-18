@@ -25,17 +25,43 @@ class AdminScheduleController extends Controller
     public function index(Request $request): View
     {
         $blockedDates = BlockedDate::query()
+            ->with('attendantUser:id,name')
             ->orderBy('blocked_date')
             ->get();
 
         $attendants = $this->availableAttendants();
 
-        $selectedAttendant = $request->string('attendant')->toString();
-        if ($selectedAttendant === '' || ! $attendants->contains($selectedAttendant)) {
-            $selectedAttendant = (string) $attendants->first();
+        $selectedAttendantKey = $request->string('attendant')->toString();
+
+        if ($selectedAttendantKey === '' && $request->filled('attendant_user_id')) {
+            $selectedAttendantKey = 'user:'.$request->integer('attendant_user_id');
         }
 
-        $schedule = AttendantSchedule::query()->where('attendant_name', $selectedAttendant)->first();
+        if ($selectedAttendantKey === '' && $request->filled('attendant_name')) {
+            $selectedAttendantKey = 'name:'.$request->string('attendant_name')->toString();
+        }
+
+        if ($selectedAttendantKey === '' || ! $attendants->contains(fn (array $attendant) => $attendant['key'] === $selectedAttendantKey)) {
+            $firstAttendant = $attendants->first();
+            $selectedAttendantKey = is_array($firstAttendant) ? (string) ($firstAttendant['key'] ?? '') : '';
+        }
+
+        $selectedAttendant = $attendants->first(fn (array $attendant) => $attendant['key'] === $selectedAttendantKey);
+        $selectedAttendantName = is_array($selectedAttendant) ? (string) ($selectedAttendant['name'] ?? '') : '';
+        $selectedAttendantUserId = is_array($selectedAttendant) ? ($selectedAttendant['user_id'] ?? null) : null;
+
+        $scheduleQuery = AttendantSchedule::query();
+
+        if ($selectedAttendantUserId) {
+            $scheduleQuery->where(function ($query) use ($selectedAttendantUserId, $selectedAttendantName) {
+                $query->where('attendant_user_id', $selectedAttendantUserId)
+                    ->orWhere('attendant_name', $selectedAttendantName);
+            });
+        } else {
+            $scheduleQuery->where('attendant_name', $selectedAttendantName);
+        }
+
+        $schedule = $scheduleQuery->first();
 
         $defaultSchedule = [
             'working_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
@@ -61,7 +87,8 @@ class AdminScheduleController extends Controller
         return view('academic.admin-schedule', [
             'blockedDates' => $blockedDates,
             'attendants' => $attendants,
-            'selectedAttendant' => $selectedAttendant,
+            'selectedAttendantKey' => $selectedAttendantKey,
+            'selectedAttendantName' => $selectedAttendantName,
             'schedule' => $normalizedSchedule,
         ]);
     }
@@ -69,11 +96,36 @@ class AdminScheduleController extends Controller
     public function storeAttendantSchedule(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'attendant_name' => ['required', 'string', 'max:255'],
+            'attendant_key' => ['nullable', 'string', 'required_without:attendant_name'],
+            'attendant_name' => ['nullable', 'string', 'max:255', 'required_without:attendant_key'],
             'slot_duration_minutes' => ['required', 'integer', 'in:30,45,60'],
         ], [
-            'attendant_name.required' => 'Selecione o atendente.',
+            'attendant_key.required_without' => 'Selecione o atendente.',
+            'attendant_name.required_without' => 'Selecione o atendente.',
         ]);
+
+        $attendantName = null;
+        $attendantUserId = null;
+
+        if (! empty($validated['attendant_key'] ?? null)) {
+            $selectedAttendant = $this->availableAttendants()
+                ->first(fn (array $attendant) => $attendant['key'] === $validated['attendant_key']);
+
+            if (is_array($selectedAttendant)) {
+                $attendantName = (string) ($selectedAttendant['name'] ?? '');
+                $attendantUserId = $selectedAttendant['user_id'] ?? null;
+            }
+        }
+
+        if (! $attendantName && ! empty($validated['attendant_name'] ?? null)) {
+            $identity = $this->scheduling->resolveAttendant($validated['attendant_name']);
+            $attendantName = $validated['attendant_name'];
+            $attendantUserId = $identity['user_id'];
+        }
+
+        if (! $attendantName) {
+            return back()->withErrors(['attendant_key' => 'Selecione um atendente válido.'])->withInput();
+        }
 
         $baseSchedule = [
             'working_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
@@ -107,17 +159,15 @@ class AdminScheduleController extends Controller
             return back()->withErrors(['working_days' => 'Selecione ao menos um dia útil.'])->withInput();
         }
 
-        $attendantIdentity = $this->scheduling->resolveAttendant($validated['attendant_name']);
-
-        $keys = $attendantIdentity['user_id']
-            ? ['attendant_user_id' => $attendantIdentity['user_id']]
-            : ['attendant_name' => $validated['attendant_name']];
+        $keys = $attendantUserId
+            ? ['attendant_user_id' => $attendantUserId]
+            : ['attendant_name' => $attendantName];
 
         AttendantSchedule::query()->updateOrCreate(
             $keys,
             [
-                'attendant_name' => $validated['attendant_name'],
-                'attendant_user_id' => $attendantIdentity['user_id'],
+                'attendant_name' => $attendantName,
+                'attendant_user_id' => $attendantUserId,
                 'working_days' => $workingDays,
                 'day_settings' => $daySettings,
                 'start_time' => $firstDayConfig['start_time'],
@@ -129,7 +179,7 @@ class AdminScheduleController extends Controller
         );
 
         return redirect()
-            ->route('academic.admin.schedule', ['attendant' => $validated['attendant_name']])
+            ->route('academic.admin.schedule', ['attendant' => $attendantUserId ? 'user:'.$attendantUserId : 'name:'.$attendantName])
             ->with('status', 'Configuração de horários salva com sucesso.');
     }
 
@@ -138,26 +188,44 @@ class AdminScheduleController extends Controller
         $validated = $request->validate([
             'blocked_date' => ['required', 'date'],
             'reason' => ['required', 'string', 'max:255'],
+            'attendant_key' => ['nullable', 'string', 'max:255'],
             'attendant_name' => ['nullable', 'string', 'max:255'],
         ], [
             'blocked_date.required' => 'Informe a data para bloqueio.',
             'reason.required' => 'Informe o motivo do bloqueio.',
         ]);
 
-        $attendantName = $validated['attendant_name'] ?? null;
-        if ($attendantName === '' || $attendantName === 'all') {
-            $attendantName = null;
+        $attendantName = null;
+        $attendantUserId = null;
+
+        $attendantKey = (string) ($validated['attendant_key'] ?? '');
+
+        if ($attendantKey !== '' && $attendantKey !== 'all') {
+            $selectedAttendant = $this->availableAttendants()
+                ->first(fn (array $attendant) => $attendant['key'] === $attendantKey);
+
+            if (is_array($selectedAttendant)) {
+                $attendantName = (string) ($selectedAttendant['name'] ?? '');
+                $attendantUserId = $selectedAttendant['user_id'] ?? null;
+            }
         }
 
-        $attendantIdentity = $attendantName
-            ? $this->scheduling->resolveAttendant($attendantName)
-            : ['user_id' => null];
+        if (! $attendantName && ! empty($validated['attendant_name'] ?? null)) {
+            $identity = $this->scheduling->resolveAttendant($validated['attendant_name']);
+            $attendantName = $validated['attendant_name'];
+            $attendantUserId = $identity['user_id'];
+        }
+
+        if ($attendantKey === 'all') {
+            $attendantName = null;
+            $attendantUserId = null;
+        }
 
         BlockedDate::query()->updateOrCreate(
             [
                 'blocked_date' => Carbon::parse($validated['blocked_date'])->toDateString(),
                 'attendant_name' => $attendantName,
-                'attendant_user_id' => $attendantIdentity['user_id'],
+                'attendant_user_id' => $attendantUserId,
             ],
             [
                 'reason' => $validated['reason'],
@@ -176,38 +244,76 @@ class AdminScheduleController extends Controller
 
     private function availableAttendants(): Collection
     {
-        $appointmentAttendants = Appointment::query()
-            ->select('attendant_name')
-            ->whereNotNull('attendant_name')
-            ->where('attendant_name', '!=', '')
-            ->distinct()
-            ->pluck('attendant_name');
+        $attendants = [];
 
-        $scheduledAttendants = AttendantSchedule::query()
-            ->select('attendant_name')
-            ->whereNotNull('attendant_name')
-            ->where('attendant_name', '!=', '')
-            ->pluck('attendant_name');
+        $addAttendant = function (string $name, ?int $userId = null) use (&$attendants): void {
+            $name = trim($name);
+            if ($name === '') {
+                return;
+            }
 
-        $professorAttendants = User::query()
+            $key = $userId ? 'user:'.$userId : 'name:'.$name;
+            if (array_key_exists($key, $attendants)) {
+                return;
+            }
+
+            $attendants[$key] = [
+                'key' => $key,
+                'name' => $name,
+                'user_id' => $userId,
+            ];
+        };
+
+        User::query()
             ->where('role', 'professor')
-            ->pluck('name')
-            ->map(fn (string $name) => $this->normalizeProfessorAttendantName($name));
+            ->get(['id', 'name'])
+            ->each(function (User $user) use ($addAttendant): void {
+                $addAttendant($this->normalizeProfessorAttendantName($user->name), $user->id);
+            });
 
-        $attendants = $appointmentAttendants
-            ->merge($scheduledAttendants)
-            ->merge($professorAttendants)
-            ->filter(fn ($name) => is_string($name) && trim($name) !== '')
-            ->map(fn (string $name) => trim($name))
-            ->unique()
-            ->sort()
-            ->values();
+        AttendantSchedule::query()
+            ->where(function ($query) {
+                $query->whereNotNull('attendant_user_id')
+                    ->orWhere(function ($innerQuery) {
+                        $innerQuery->whereNotNull('attendant_name')->where('attendant_name', '!=', '');
+                    });
+            })
+            ->get(['attendant_name', 'attendant_user_id'])
+            ->each(function (AttendantSchedule $schedule) use ($addAttendant): void {
+                $resolved = $this->scheduling->resolveAttendant($schedule->attendant_name ?? '', $schedule->attendant_user_id);
+                $resolvedName = trim((string) ($resolved['name'] ?? $schedule->attendant_name ?? ''));
 
-        if ($attendants->isEmpty()) {
-            return collect(['Sec. Acadêmica', 'Prof. Ramon', 'Prof. Ana Lima']);
+                if ($resolvedName !== '') {
+                    $addAttendant($resolvedName, $resolved['user_id'] ?? null);
+                }
+            });
+
+        Appointment::query()
+            ->where(function ($query) {
+                $query->whereNotNull('attendant_user_id')
+                    ->orWhere(function ($innerQuery) {
+                        $innerQuery->whereNotNull('attendant_name')->where('attendant_name', '!=', '');
+                    });
+            })
+            ->get(['attendant_name', 'attendant_user_id'])
+            ->each(function (Appointment $appointment) use ($addAttendant): void {
+                $resolved = $this->scheduling->resolveAttendant($appointment->attendant_name ?? '', $appointment->attendant_user_id);
+                $resolvedName = trim((string) ($resolved['name'] ?? $appointment->attendant_name ?? ''));
+
+                if ($resolvedName !== '') {
+                    $addAttendant($resolvedName, $resolved['user_id'] ?? null);
+                }
+            });
+
+        if (empty($attendants)) {
+            $addAttendant('Sec. Acadêmica');
+            $addAttendant('Prof. Ramon');
+            $addAttendant('Prof. Ana Lima');
         }
 
-        return $attendants;
+        return collect(array_values($attendants))
+            ->sortBy('name')
+            ->values();
     }
 
     private function normalizeProfessorAttendantName(string $name): string

@@ -6,6 +6,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $attendant_name
+ * @property int|null $attendant_user_id
+ * @property array<int, string>|null $working_days
+ * @property array<string, mixed>|null $day_settings
+ * @property string $start_time
+ * @property string $end_time
+ * @property string|null $break_start
+ * @property string|null $break_end
+ * @property int $slot_duration_minutes
+ */
 class AttendantSchedule extends Model
 {
     use HasFactory;

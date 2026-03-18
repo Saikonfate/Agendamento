@@ -54,7 +54,7 @@
                         <div class="border-l border-zinc-700 pl-4">
                             <p class="text-zinc-400">{{ $appointment->scheduled_at->locale('pt_BR')->translatedFormat('D, d M') }} · {{ $appointment->scheduled_at->format('H:i') }}</p>
                             <p class="text-2xl font-semibold">{{ $appointment->subject }}</p>
-                            <p class="text-zinc-400">{{ $appointment->attendant_name }}</p>
+                            <p class="text-zinc-400">{{ $appointment->attendant_display_name }}</p>
                             <span class="mt-2 inline-flex rounded-full px-3 py-1 text-sm {{ $appointment->status === 'Confirmado' ? 'bg-blue-500/20 text-blue-300' : ($appointment->status === 'Pendente' ? 'bg-amber-500/20 text-amber-300' : ($appointment->status === 'Cancelado' ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300')) }}">{{ $appointment->status }}</span>
                         </div>
                     @empty

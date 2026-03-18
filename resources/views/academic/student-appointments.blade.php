@@ -50,7 +50,7 @@
                                 <td class="px-4 py-3">{{ $appointment->scheduled_at->format('d/m/Y') }}</td>
                                 <td class="px-4 py-3">{{ $appointment->scheduled_at->format('H:i') }}</td>
                                 <td class="px-4 py-3">{{ $appointment->subject }}</td>
-                                <td class="px-4 py-3">{{ $appointment->attendant_name }}</td>
+                                <td class="px-4 py-3">{{ $appointment->attendant_display_name }}</td>
                                 <td class="px-4 py-3">
                                     <span class="rounded-full px-3 py-1 text-sm {{ $appointment->status === 'Confirmado' ? 'bg-blue-500/20 text-blue-300' : ($appointment->status === 'Pendente' ? 'bg-amber-500/20 text-amber-300' : ($appointment->status === 'Realizado' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300')) }}">{{ $appointment->status }}</span>
                                     @if ($appointment->status === 'Cancelado' && $appointment->cancellation_reason)
@@ -60,7 +60,7 @@
                                 <td class="px-4 py-3">
                                     <div class="flex gap-2">
                                         @if (in_array($appointment->status, ['Confirmado', 'Pendente'], true))
-                                            <a href="{{ route('academic.student.new', ['date' => $appointment->scheduled_at->format('Y-m-d'), 'attendant' => $appointment->attendant_name, 'subject' => $appointment->subject]) }}" class="rounded-xl border border-zinc-700 px-3 py-1 hover:border-violet-400">Reagendar</a>
+                                            <a href="{{ route('academic.student.new', ['date' => $appointment->scheduled_at->format('Y-m-d'), 'attendant_user_id' => $appointment->attendant_user_id, 'attendant_name' => $appointment->attendant_display_name, 'subject' => $appointment->subject]) }}" class="rounded-xl border border-zinc-700 px-3 py-1 hover:border-violet-400">Reagendar</a>
                                             <form method="POST" action="{{ route('academic.student.cancel', $appointment) }}" data-cancel-form>
                                                 @csrf
                                                 @method('PATCH')

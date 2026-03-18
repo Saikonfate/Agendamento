@@ -4,7 +4,8 @@
     $displayName = auth()->user()?->name ?? 'Gabriel Silva';
     $attendants = collect($attendants ?? []);
     $selectedDate = $selectedDate ?? now()->addDay();
-    $selectedAttendant = $selectedAttendant ?? '';
+    $selectedAttendantKey = $selectedAttendantKey ?? '';
+    $selectedAttendantName = $selectedAttendantName ?? '';
     $subject = $subject ?? '';
     $slots = collect($slots ?? []);
     $slotsByDate = $slotsByDate ?? [];
@@ -44,9 +45,9 @@
                     <h2 class="text-3xl font-semibold">1 · Tipo de atendimento</h2>
                     <div class="mt-4">
                         <label class="mb-2 block text-xl text-zinc-400">Atendente</label>
-                        <select data-attendant-select name="attendant_name" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5">
+                        <select data-attendant-select name="attendant_key" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5">
                             @foreach ($attendants as $attendant)
-                                <option value="{{ $attendant }}" @selected(old('attendant_name', $selectedAttendant) === $attendant)>{{ $attendant }}</option>
+                                <option value="{{ $attendant['key'] }}" @selected(old('attendant_key', $selectedAttendantKey) === $attendant['key'])>{{ $attendant['name'] }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -88,7 +89,7 @@
                 <article class="rounded-2xl border border-violet-500/40 bg-violet-500/10 p-5">
                     <h3 class="text-2xl font-semibold text-violet-200">3 · Confirmação</h3>
                     <div class="mt-4 space-y-2 text-xl">
-                        <p><span class="font-semibold">Atendente:</span> <span data-confirm-attendant>{{ old('attendant_name', $selectedAttendant ?: 'Selecione um atendente') }}</span></p>
+                        <p><span class="font-semibold">Atendente:</span> <span data-confirm-attendant>{{ $selectedAttendantName !== '' ? $selectedAttendantName : 'Selecione um atendente' }}</span></p>
                         <p><span class="font-semibold">Data:</span> <span data-confirm-date>{{ $selectedDateLongLabel }}</span></p>
                         <p><span class="font-semibold">Horário:</span> <span data-confirm-time>{{ $selectedTime !== '' ? $selectedTime.' - '.\Illuminate\Support\Carbon::createFromFormat('H:i', $selectedTime)->addMinutes(30)->format('H:i') : 'Selecione um horário' }}</span></p>
                         <p><span class="font-semibold">Motivo:</span> {{ old('subject', $subject ?: 'Informe o motivo') }}</p>
