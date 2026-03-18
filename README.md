@@ -76,14 +76,34 @@ O aplicativo estará disponível em `http://localhost:8000`
 ### Aluno
 - **E-mail:** `aluno@unifap.edu.br`
 - **Senha:** `password`
+- **Matrícula:** `20241180203`
 
 ### Admin
 - **E-mail:** `admin@unifap.edu.br`
 - **Senha:** `password`
 
-### Professor
-- **E-mail:** `professor@unifap.edu.br`
-- **Senha:** `password`
+### Professores
+- **Professor 1**
+  - **E-mail:** `professor@unifap.edu.br`
+  - **Senha:** `password`
+
+- **Professor 2**
+  - **E-mail:** `professor.teste@unifap.edu.br`
+  - **Senha:** `password`
+
+- **Prof. Ramon** (usado nos agendamentos de teste)
+  - **E-mail:** `ramon@unifap.edu.br`
+  - **Senha:** `password`
+
+- **Prof. Ana Lima** (usado nos agendamentos de teste)
+  - **E-mail:** `ana.lima@unifap.edu.br`
+  - **Senha:** `password`
+
+## 👤 Papéis (Roles) do Sistema
+
+- **student**: Aluno que pode agendar consultas
+- **admin**: Secretário que gerencia agendamentos e configurações
+- **professor**: Professor que possui disponibilidade e pode receber agendamentos
 
 ## 📁 Estrutura do Projeto
 

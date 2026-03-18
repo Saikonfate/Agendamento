@@ -18,7 +18,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::updateOrCreate(
+        // Criar usuários reais
+        $student = User::updateOrCreate(
             ['email' => 'aluno@unifap.edu.br'],
             [
                 'name' => 'Gabriel Silva',
@@ -29,7 +30,7 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        User::updateOrCreate(
+        $admin = User::updateOrCreate(
             ['email' => 'admin@unifap.edu.br'],
             [
                 'name' => 'Admin Secretaria',
@@ -39,7 +40,7 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        User::updateOrCreate(
+        $professor1 = User::updateOrCreate(
             ['email' => 'professor@unifap.edu.br'],
             [
                 'name' => 'Professor Exemplo',
@@ -49,10 +50,31 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        User::updateOrCreate(
+        $professor2 = User::updateOrCreate(
             ['email' => 'professor.teste@unifap.edu.br'],
             [
                 'name' => 'Professor Teste',
+                'role' => 'professor',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+            ],
+        );
+
+        // Criar mais dois professores usados nos agendamentos
+        $profRamon = User::updateOrCreate(
+            ['email' => 'ramon@unifap.edu.br'],
+            [
+                'name' => 'Prof. Ramon',
+                'role' => 'professor',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+            ],
+        );
+
+        $profAnaLima = User::updateOrCreate(
+            ['email' => 'ana.lima@unifap.edu.br'],
+            [
+                'name' => 'Prof. Ana Lima',
                 'role' => 'professor',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
@@ -63,13 +85,13 @@ class DatabaseSeeder extends Seeder
             $today = Carbon::today();
 
             foreach ([
-                ['09:00', 'Gabriel Silva', '20241180203', 'Prof. Ramon', 'Orientação TCC', 'Confirmado'],
-                ['10:00', 'Luiz Gabriel', '20232130014', 'Sec. Acadêmica', 'Histórico escolar', 'Pendente'],
-                ['11:00', 'Jose Ueider', '200610066', 'Sec. Acadêmica', 'Requerimento geral', 'Confirmado'],
-                ['13:30', 'Ana Souza', '20231140021', 'Prof. Ana Lima', 'Revisão de prova', 'Confirmado'],
-                ['14:00', 'Carlos Melo', '20222110088', 'Sec. Acadêmica', 'Declaração de vínculo', 'Realizado'],
-                ['15:00', 'Fernanda Costa', '20241190044', 'Prof. Ramon', 'Orientação TCC', 'Realizado'],
-            ] as [$time, $studentName, $registration, $attendantName, $subject, $status]) {
+                ['09:00', 'Gabriel Silva', '20241180203', $profRamon->id, 'Prof. Ramon', 'Orientação TCC', 'Confirmado'],
+                ['10:00', 'Luiz Gabriel', '20232130014', $professor1->id, 'Professor Exemplo', 'Histórico escolar', 'Pendente'],
+                ['11:00', 'Jose Ueider', '200610066', $professor2->id, 'Professor Teste', 'Requerimento geral', 'Confirmado'],
+                ['13:30', 'Ana Souza', '20231140021', $profAnaLima->id, 'Prof. Ana Lima', 'Revisão de prova', 'Confirmado'],
+                ['14:00', 'Carlos Melo', '20222110088', $professor1->id, 'Professor Exemplo', 'Declaração de vínculo', 'Realizado'],
+                ['15:00', 'Fernanda Costa', '20241190044', $profRamon->id, 'Prof. Ramon', 'Orientação TCC', 'Realizado'],
+            ] as [$time, $studentName, $registration, $attendantUserId, $attendantName, $subject, $status]) {
                 $scheduledAt = $today->copy()->setTimeFromTimeString($time);
 
                 Appointment::updateOrCreate(
@@ -79,6 +101,7 @@ class DatabaseSeeder extends Seeder
                     ],
                     [
                         'student_name' => $studentName,
+                        'attendant_user_id' => $attendantUserId,
                         'attendant_name' => $attendantName,
                         'subject' => $subject,
                         'status' => $status,
@@ -91,7 +114,7 @@ class DatabaseSeeder extends Seeder
             BlockedDate::query()->updateOrCreate(
                 [
                     'blocked_date' => Carbon::today()->addDays(2)->toDateString(),
-                    'attendant_name' => null,
+                    'attendant_user_id' => null,
                 ],
                 [
                     'reason' => 'Feriado — Dia de São José',
@@ -101,6 +124,7 @@ class DatabaseSeeder extends Seeder
             BlockedDate::query()->updateOrCreate(
                 [
                     'blocked_date' => Carbon::today()->addDays(8)->toDateString(),
+                    'attendant_user_id' => $profRamon->id,
                     'attendant_name' => 'Prof. Ramon',
                 ],
                 [
