@@ -52,26 +52,26 @@
                 <a href="{{ route('academic.auth') }}" class="rounded-md border border-violet-500 px-3 py-1 text-sm font-semibold tracking-wide text-white bg-violet-500">UNIFAP</a>
 
                 @if ($currentRole === 'student')
-                    <nav class="hidden items-center gap-6 text-sm text-white/50 md:flex">
-                        <a href="{{ route('academic.student.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'inicio' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Início</a>
-                        <a href="{{ route('academic.student.new') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'agendar' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Agendar</a>
-                        <a href="{{ route('academic.student.mine') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'meus' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Meus agendamentos</a>
-                        <a href="{{ route('academic.student.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Perfil</a>
+                    <nav class="hidden items-center gap-6 text-sm text-white/75 md:flex">
+                        <a href="{{ route('academic.student.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'inicio' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Início</a>
+                        <a href="{{ route('academic.student.new') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'agendar' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Agendar</a>
+                        <a href="{{ route('academic.student.mine') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'meus' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Meus agendamentos</a>
+                        <a href="{{ route('academic.student.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Perfil</a>
                     </nav>
                 @elseif ($currentRole === 'admin')
-                    <nav class="hidden items-center gap-6 text-sm text-white/50 md:flex">
-                        <a href="{{ route('academic.admin.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'agenda' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Agenda do dia</a>
-                        <a href="{{ route('academic.admin.schedule') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'horarios' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Gerenciar horários</a>
-                        <a href="{{ route('academic.admin.users') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'cadastros' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Cadastros</a>
-                        <a href="{{ route('academic.admin.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Perfil</a>
+                    <nav class="hidden items-center gap-6 text-sm text-white/75 md:flex">
+                        <a href="{{ route('academic.admin.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'agenda' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Agenda do dia</a>
+                        <a href="{{ route('academic.admin.schedule') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'horarios' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Gerenciar horários</a>
+                        <a href="{{ route('academic.admin.users') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'cadastros' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Cadastros</a>
+                        <a href="{{ route('academic.admin.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Perfil</a>
                     </nav>
                 @elseif ($currentRole === 'professor')
-                    <nav class="hidden items-center gap-6 text-sm text-white/50 md:flex">
-                        <a href="{{ route('academic.professor.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'inicio' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Início</a>
-                        <a href="{{ route('academic.professor.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Perfil</a>
+                    <nav class="hidden items-center gap-6 text-sm text-white/75 md:flex">
+                        <a href="{{ route('academic.professor.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'inicio' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Início</a>
+                        <a href="{{ route('academic.professor.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Perfil</a>
                     </nav>
                 @else
-                    <p class="hidden text-sm text-zinc-400 md:block">Sistema de Agendamento Acadêmico</p>
+                    <p class="hidden text-sm font-medium text-zinc-700 md:block">Sistema de Agendamento Acadêmico</p>
                 @endif
             </div>
 
@@ -106,30 +106,30 @@
         </div>
 
         @if ($currentRole === 'student')
-            <nav class="border-t border-emerald-500/30 px-4 py-2 text-sm text-white/50 md:hidden sm:px-6 lg:px-8">
+            <nav class="border-t border-emerald-500/30 px-4 py-2 text-sm text-white/75 md:hidden sm:px-6 lg:px-8">
                 <div class="mx-auto flex w-full max-w-7xl items-center gap-4 overflow-x-auto whitespace-nowrap">
-                    <a href="{{ route('academic.student.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'inicio' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Início</a>
-                    <a href="{{ route('academic.student.new') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'agendar' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Agendar</a>
-                    <a href="{{ route('academic.student.mine') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'meus' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Meus agendamentos</a>
-                    <a href="{{ route('academic.student.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Perfil</a>
+                    <a href="{{ route('academic.student.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'inicio' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Início</a>
+                    <a href="{{ route('academic.student.new') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'agendar' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Agendar</a>
+                    <a href="{{ route('academic.student.mine') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'meus' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Meus agendamentos</a>
+                    <a href="{{ route('academic.student.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Perfil</a>
                     <span class="ml-auto rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">Perfil: {{ $roleLabel }}</span>
                 </div>
             </nav>
         @elseif ($currentRole === 'admin')
-            <nav class="border-t border-emerald-500/30 px-4 py-2 text-sm text-white/50 md:hidden sm:px-6 lg:px-8">
+            <nav class="border-t border-emerald-500/30 px-4 py-2 text-sm text-white/75 md:hidden sm:px-6 lg:px-8">
                 <div class="mx-auto flex w-full max-w-7xl items-center gap-4 overflow-x-auto whitespace-nowrap">
-                    <a href="{{ route('academic.admin.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'agenda' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Agenda do dia</a>
-                    <a href="{{ route('academic.admin.schedule') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'horarios' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Gerenciar horários</a>
-                    <a href="{{ route('academic.admin.users') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'cadastros' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Cadastros</a>
-                    <a href="{{ route('academic.admin.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Perfil</a>
+                    <a href="{{ route('academic.admin.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'agenda' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Agenda do dia</a>
+                    <a href="{{ route('academic.admin.schedule') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'horarios' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Gerenciar horários</a>
+                    <a href="{{ route('academic.admin.users') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'cadastros' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Cadastros</a>
+                    <a href="{{ route('academic.admin.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Perfil</a>
                     <span class="ml-auto rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">Perfil: {{ $roleLabel }}</span>
                 </div>
             </nav>
         @elseif ($currentRole === 'professor')
-            <nav class="border-t border-emerald-500/30 px-4 py-2 text-sm text-white/50 md:hidden sm:px-6 lg:px-8">
+            <nav class="border-t border-emerald-500/30 px-4 py-2 text-sm text-white/75 md:hidden sm:px-6 lg:px-8">
                 <div class="mx-auto flex w-full max-w-7xl items-center gap-4 overflow-x-auto whitespace-nowrap">
-                    <a href="{{ route('academic.professor.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'inicio' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Início</a>
-                    <a href="{{ route('academic.professor.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/50 hover:text-white' }}">Perfil</a>
+                    <a href="{{ route('academic.professor.dashboard') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'inicio' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Início</a>
+                    <a href="{{ route('academic.professor.profile') }}" class="border-b-2 pb-0.5 {{ ($active ?? '') === 'perfil' ? 'border-violet-300 text-violet-300' : 'border-transparent text-white/75 hover:text-white' }}">Perfil</a>
                     <span class="ml-auto rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">Perfil: {{ $roleLabel }}</span>
                 </div>
             </nav>
