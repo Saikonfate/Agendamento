@@ -6,11 +6,29 @@ use App\Models\Appointment;
 use App\Models\AttendantSchedule;
 use App\Models\BlockedDate;
 use App\Models\User;
+use DateTime;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 class SchedulingService
 {
+    public const MIN_DAYS_IN_ADVANCE = 1;
+
+    public const MAX_SCHEDULE_DAYS_AHEAD = 90;
+
+    public const MIN_HOURS_BEFORE_MODIFICATION = 2;
+
+    public const MAX_ACTIVE_APPOINTMENTS_PER_STUDENT = 2;
+
+    public const MAX_ACTIVE_APPOINTMENTS_PER_SHIFT = 6;
+
+    public const NO_SHOW_TOLERANCE_MINUTES = 15;
+
+    public const NO_SHOW_LOOKBACK_DAYS = 60;
+
+    public const NO_SHOW_BLOCK_THRESHOLD = 3;
+
     /**
      * @var array<string, int>
      */
@@ -172,13 +190,31 @@ class SchedulingService
 
         $this->applyAttendantFilter($query, $identity);
 
-        $occupied = $query->get()->pluck('scheduled_at')->map(fn ($dateTime) => Carbon::parse($dateTime)->format('H:i'))->all();
+        $appointments = $query->get();
+        $occupied = $appointments->pluck('scheduled_at')->map(fn ($dateTime) => Carbon::parse($dateTime)->format('H:i'))->all();
+
+        $shiftCounts = [
+            'morning' => $appointments->filter(function (Appointment $appointment): bool {
+                return Carbon::parse($appointment->scheduled_at)->hour < 12;
+            })->count(),
+            'afternoon' => $appointments->filter(function (Appointment $appointment): bool {
+                return Carbon::parse($appointment->scheduled_at)->hour >= 12;
+            })->count(),
+        ];
 
         return collect($slots)
-            ->map(fn (string $slot) => [
-                'time' => $slot,
-                'available' => ! in_array($slot, $occupied, true),
-            ])
+            ->map(function (string $slot) use ($date, $occupied, $shiftCounts): array {
+                $slotDateTime = $date->copy()->setTimeFromTimeString($slot);
+                $shift = $this->shiftLabelForDateTime($slotDateTime);
+                $shiftHasCapacity = ($shiftCounts[$shift] ?? 0) < self::MAX_ACTIVE_APPOINTMENTS_PER_SHIFT;
+
+                return [
+                    'time' => $slot,
+                    'available' => ! in_array($slot, $occupied, true)
+                        && $shiftHasCapacity
+                        && $this->isSchedulableDateTime($slotDateTime),
+                ];
+            })
             ->all();
     }
 
@@ -186,6 +222,11 @@ class SchedulingService
     {
         $schedule = $this->resolveScheduleForDate($date, $attendantName, $attendantUserId);
         $duration = (int) $schedule['slot_duration_minutes'];
+
+        $slotDateTime = $date->copy()->setTimeFromTimeString($time);
+        if (! $this->isSchedulableDateTime($slotDateTime)) {
+            return false;
+        }
 
         $start = Carbon::createFromFormat('H:i', $schedule['start_time']);
         $end = Carbon::createFromFormat('H:i', $schedule['end_time']);
@@ -228,11 +269,160 @@ class SchedulingService
         return $query->exists();
     }
 
+    public function hasStudentActiveConflict(string $registration, Carbon $scheduledAt, ?int $ignoreAppointmentId = null): bool
+    {
+        $query = Appointment::query()
+            ->where('student_registration', $registration)
+            ->where('scheduled_at', $scheduledAt)
+            ->whereIn('status', ['Confirmado', 'Pendente']);
+
+        if ($ignoreAppointmentId) {
+            $query->where('id', '!=', $ignoreAppointmentId);
+        }
+
+        return $query->exists();
+    }
+
+    public function hasReachedStudentActiveLimit(string $registration, ?int $ignoreAppointmentId = null): bool
+    {
+        $query = Appointment::query()
+            ->where('student_registration', $registration)
+            ->whereIn('status', ['Confirmado', 'Pendente']);
+
+        if ($ignoreAppointmentId) {
+            $query->where('id', '!=', $ignoreAppointmentId);
+        }
+
+        return $query->count() >= self::MAX_ACTIVE_APPOINTMENTS_PER_STUDENT;
+    }
+
+    public function hasAttendantShiftCapacity(
+        Carbon $scheduledAt,
+        ?string $attendantName = null,
+        ?int $attendantUserId = null,
+        ?int $ignoreAppointmentId = null,
+    ): bool {
+        $identity = $this->resolveAttendant($attendantName, $attendantUserId);
+        $shift = $this->shiftLabelForDateTime($scheduledAt);
+
+        $query = Appointment::query()
+            ->whereDate('scheduled_at', $scheduledAt)
+            ->whereIn('status', ['Confirmado', 'Pendente']);
+
+        $this->applyAttendantFilter($query, $identity);
+
+        if ($ignoreAppointmentId) {
+            $query->where('id', '!=', $ignoreAppointmentId);
+        }
+
+        $count = $query->get()->filter(function (Appointment $appointment) use ($shift): bool {
+            return $this->shiftLabelForDateTime(Carbon::parse($appointment->scheduled_at)) === $shift;
+        })->count();
+
+        return $count < self::MAX_ACTIVE_APPOINTMENTS_PER_SHIFT;
+    }
+
     public function slotDurationForAttendant(?string $attendantName = null, ?int $attendantUserId = null): int
     {
         $schedule = $this->resolveSchedule($attendantName, $attendantUserId);
 
         return (int) $schedule['slot_duration_minutes'];
+    }
+
+    public function isDateTimeInPast(Carbon $dateTime): bool
+    {
+        return $dateTime->lt($this->systemNow());
+    }
+
+    public function isSchedulableDateTime(Carbon $dateTime): bool
+    {
+        return $this->schedulingValidationError($dateTime) === null;
+    }
+
+    public function schedulingValidationError(Carbon $dateTime): ?string
+    {
+        $now = $this->systemNow();
+
+        if ($this->isDateTimeInPast($dateTime)) {
+            return 'past';
+        }
+
+        if ($dateTime->lt($now->copy()->addDays(self::MIN_DAYS_IN_ADVANCE)->startOfDay())) {
+            return 'day_advance';
+        }
+
+        if ($dateTime->gt($now->copy()->addDays(self::MAX_SCHEDULE_DAYS_AHEAD)->endOfDay())) {
+            return 'window';
+        }
+
+        return null;
+    }
+
+    public function schedulingValidationMessage(string $error): string
+    {
+        return match ($error) {
+            'past' => 'Não é possível agendar horários que já passaram.',
+            'day_advance' => 'Agendamentos devem ser feitos com pelo menos '.self::MIN_DAYS_IN_ADVANCE.' dia de antecedência.',
+            'window' => 'Não é possível agendar com mais de '.self::MAX_SCHEDULE_DAYS_AHEAD.' dias de antecedência.',
+            default => 'Horário inválido para agendamento.',
+        };
+    }
+
+    public function applyAutomaticNoShowRules(): void
+    {
+        $cutoff = $this->systemNow()->copy()->subMinutes(self::NO_SHOW_TOLERANCE_MINUTES);
+
+        Appointment::query()
+            ->whereIn('status', ['Confirmado', 'Pendente'])
+            ->where('scheduled_at', '<=', $cutoff)
+            ->update([
+                'status' => 'Cancelado',
+                'cancellation_reason' => 'No-show automático (tolerância de '.self::NO_SHOW_TOLERANCE_MINUTES.' min excedida).',
+            ]);
+    }
+
+    public function studentNoShowCount(string $registration): int
+    {
+        return Appointment::query()
+            ->where('student_registration', $registration)
+            ->where('status', 'Cancelado')
+            ->where('cancellation_reason', 'like', 'No-show automático%')
+            ->where('scheduled_at', '>=', $this->systemNow()->copy()->subDays(self::NO_SHOW_LOOKBACK_DAYS))
+            ->count();
+    }
+
+    public function isStudentBlockedByNoShow(string $registration): bool
+    {
+        return $this->studentNoShowCount($registration) >= self::NO_SHOW_BLOCK_THRESHOLD;
+    }
+
+    public function studentNoShowBlockMessage(): string
+    {
+        return 'Você atingiu o limite de no-show recente. Procure a secretaria para regularização.';
+    }
+
+    public function canModifyScheduledAppointment(DateTimeInterface $scheduledAt): bool
+    {
+        $scheduledAtCarbon = $scheduledAt instanceof Carbon
+            ? $scheduledAt->copy()
+            : Carbon::instance(DateTime::createFromInterface($scheduledAt));
+
+        return $scheduledAtCarbon->gte($this->systemNow()->copy()->addHours(self::MIN_HOURS_BEFORE_MODIFICATION));
+    }
+
+    public function modificationWindowMessage(): string
+    {
+        return 'Alterações são permitidas apenas com no mínimo '.self::MIN_HOURS_BEFORE_MODIFICATION.' horas de antecedência.';
+    }
+
+    private function shiftLabelForDateTime(Carbon $dateTime): string
+    {
+        return $dateTime->hour < 12 ? 'morning' : 'afternoon';
+    }
+
+    private function systemNow(): Carbon
+    {
+        return Carbon::now(config('app.timezone'));
     }
 
     /**

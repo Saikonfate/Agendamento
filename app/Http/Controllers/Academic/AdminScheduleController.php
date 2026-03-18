@@ -84,12 +84,132 @@ class AdminScheduleController extends Controller
 
         $normalizedSchedule['day_settings'] = $this->defaultDaySettings($normalizedSchedule, $schedule?->day_settings);
 
+        $selectedDate = $request->filled('date')
+            ? Carbon::parse($request->string('date')->toString())
+            : Carbon::today(config('app.timezone'));
+
+        $selectedDate = $selectedDate->startOfDay();
+        $monthStart = $selectedDate->copy()->startOfMonth();
+        $daysInMonth = $monthStart->daysInMonth;
+
+        $calendarMonthLabel = ucfirst($monthStart->copy()->locale('pt_BR')->translatedFormat('M/Y'));
+
+        $occupationCalendarDays = [];
+        foreach (range(0, (int) $monthStart->dayOfWeek - 1) as $index) {
+            $occupationCalendarDays[] = [
+                'day' => null,
+                'date' => null,
+                'status' => 'empty',
+                'isToday' => false,
+                'isSelected' => false,
+            ];
+        }
+
+        foreach (range(1, $daysInMonth) as $day) {
+            $dayDate = $monthStart->copy()->day($day);
+            $unavailabilityReason = $this->calendarUnavailabilityReason($dayDate, $selectedAttendantName, $selectedAttendantUserId, $blockedDates);
+            $slots = collect($this->scheduling->buildSlotsForDate($dayDate, $selectedAttendantName, $selectedAttendantUserId));
+            $totalSlots = $slots->count();
+            $availableCount = $slots->where('available', true)->count();
+
+            if ($unavailabilityReason !== null || $totalSlots === 0) {
+                $status = 'unavailable';
+            } elseif ($availableCount === $totalSlots) {
+                $status = 'available';
+            } elseif ($availableCount > 0) {
+                $status = 'partial';
+            } else {
+                $status = 'full';
+            }
+
+            $occupationCalendarDays[] = [
+                'day' => $day,
+                'date' => $dayDate->toDateString(),
+                'status' => $status,
+                'isToday' => $dayDate->isToday(),
+                'isSelected' => $dayDate->isSameDay($selectedDate),
+                'reason' => $unavailabilityReason,
+            ];
+        }
+
+        $selectedCalendarDay = collect($occupationCalendarDays)
+            ->first(fn (array $day): bool => (bool) ($day['isSelected'] ?? false));
+
+        $selectedDateReason = is_array($selectedCalendarDay)
+            ? ($selectedCalendarDay['reason'] ?? null)
+            : null;
+
+        $slotDuration = $this->scheduling->slotDurationForAttendant($selectedAttendantName, $selectedAttendantUserId);
+
+        $identity = $this->scheduling->resolveAttendant($selectedAttendantName, $selectedAttendantUserId);
+        $occupiedQuery = Appointment::query()
+            ->whereDate('scheduled_at', $selectedDate)
+            ->whereIn('status', ['Confirmado', 'Pendente']);
+
+        $occupiedQuery->where(function ($query) use ($identity) {
+            if ($identity['user_id']) {
+                $query->where('attendant_user_id', $identity['user_id']);
+            }
+
+            if ($identity['name'] !== '') {
+                $method = $identity['user_id'] ? 'orWhere' : 'where';
+                $query->{$method}('attendant_name', $identity['name']);
+            }
+
+            if (! empty($identity['aliases'])) {
+                $method = ($identity['user_id'] || $identity['name'] !== '') ? 'orWhereIn' : 'whereIn';
+                $query->{$method}('attendant_name', $identity['aliases']);
+            }
+        });
+
+        $occupiedByTime = $occupiedQuery
+            ->get(['scheduled_at', 'student_name'])
+            ->mapWithKeys(fn (Appointment $item) => [
+                Carbon::parse($item->scheduled_at)->format('H:i') => (string) $item->student_name,
+            ]);
+
+        $selectedDateSlots = collect($this->scheduling->buildSlotsForDate($selectedDate, $selectedAttendantName, $selectedAttendantUserId))
+            ->map(function (array $slot) use ($selectedDate, $slotDuration, $occupiedByTime): array {
+                $time = (string) ($slot['time'] ?? '');
+                $start = Carbon::createFromFormat('H:i', $time);
+                $end = $start->copy()->addMinutes($slotDuration);
+                $occupiedBy = $occupiedByTime->get($time);
+
+                if ($occupiedBy !== null && $occupiedBy !== '') {
+                    $status = 'Ocupado';
+                    $statusClass = 'bg-violet-500/20 text-violet-300';
+                    $displayName = $occupiedBy;
+                } elseif ((bool) ($slot['available'] ?? false)) {
+                    $status = 'Disponível';
+                    $statusClass = 'bg-emerald-500/20 text-emerald-300';
+                    $displayName = '—';
+                } else {
+                    $status = 'Indisponível por regra';
+                    $statusClass = 'bg-zinc-700 text-zinc-300';
+                    $displayName = '—';
+                }
+
+                return [
+                    'time_range' => $start->format('H:i').' - '.$end->format('H:i'),
+                    'name' => $displayName,
+                    'status' => $status,
+                    'status_class' => $statusClass,
+                ];
+            })
+            ->values();
+
         return view('academic.admin-schedule', [
             'blockedDates' => $blockedDates,
             'attendants' => $attendants,
             'selectedAttendantKey' => $selectedAttendantKey,
             'selectedAttendantName' => $selectedAttendantName,
             'schedule' => $normalizedSchedule,
+            'selectedDate' => $selectedDate,
+            'selectedDateLabel' => $selectedDate->locale('pt_BR')->translatedFormat('D, d/m'),
+            'selectedDateReason' => $selectedDateReason,
+            'calendarMonthLabel' => $calendarMonthLabel,
+            'occupationCalendarDays' => $occupationCalendarDays,
+            'selectedDateSlots' => $selectedDateSlots,
         ]);
     }
 
@@ -221,16 +341,36 @@ class AdminScheduleController extends Controller
             $attendantUserId = null;
         }
 
-        BlockedDate::query()->updateOrCreate(
-            [
-                'blocked_date' => Carbon::parse($validated['blocked_date'])->toDateString(),
+        $blockedDateValue = Carbon::parse($validated['blocked_date'])->toDateString();
+
+        $existingQuery = BlockedDate::query()
+            ->whereDate('blocked_date', $blockedDateValue)
+            ->when($attendantUserId !== null,
+                fn ($query) => $query->where('attendant_user_id', $attendantUserId),
+                fn ($query) => $query->whereNull('attendant_user_id')
+            )
+            ->when($attendantName !== null && $attendantName !== '',
+                fn ($query) => $query->where('attendant_name', $attendantName),
+                fn ($query) => $query->whereNull('attendant_name')
+            )
+            ->orderByDesc('id');
+
+        $existingBlockedDate = $existingQuery->first();
+
+        if ($existingBlockedDate) {
+            BlockedDate::query()
+                ->whereKey((int) $existingBlockedDate->id)
+                ->update([
+                'reason' => $validated['reason'],
+                ]);
+        } else {
+            BlockedDate::query()->create([
+                'blocked_date' => $blockedDateValue,
+                'reason' => $validated['reason'],
                 'attendant_name' => $attendantName,
                 'attendant_user_id' => $attendantUserId,
-            ],
-            [
-                'reason' => $validated['reason'],
-            ],
-        );
+            ]);
+        }
 
         return back()->with('status', 'Data bloqueada com sucesso.');
     }
@@ -326,6 +466,62 @@ class AdminScheduleController extends Controller
         $name = preg_replace('/^(prof\.?|professor)\s+/iu', '', $name) ?: $name;
 
         return 'Prof. '.trim($name);
+    }
+
+    private function calendarUnavailabilityReason(
+        Carbon $date,
+        ?string $attendantName,
+        ?int $attendantUserId,
+        Collection $blockedDates,
+    ): ?string {
+        if ($date->isWeekend()) {
+            return 'Fim de semana.';
+        }
+
+        if (! $this->scheduling->isSystemWorkingDay($date, $attendantName, $attendantUserId)) {
+            return 'Dia sem expediente para este atendente.';
+        }
+
+        $identity = $this->scheduling->resolveAttendant($attendantName, $attendantUserId);
+
+        $reasons = $blockedDates
+            ->filter(fn (BlockedDate $blockedDate): bool => $blockedDate->blocked_date->isSameDay($date))
+            ->filter(fn (BlockedDate $blockedDate): bool => $this->blockedDateAppliesToIdentity($blockedDate, $identity))
+            ->pluck('reason')
+            ->filter(fn (?string $reason): bool => trim((string) $reason) !== '')
+            ->unique()
+            ->values();
+
+        if ($reasons->isEmpty()) {
+            return null;
+        }
+
+        return $reasons->implode(' · ');
+    }
+
+    /**
+     * @param array{user_id: int|null, name: string, aliases: array<int, string>} $identity
+     */
+    private function blockedDateAppliesToIdentity(BlockedDate $blockedDate, array $identity): bool
+    {
+        if ($blockedDate->attendant_user_id === null && ($blockedDate->attendant_name === null || $blockedDate->attendant_name === '')) {
+            return true;
+        }
+
+        if ($identity['user_id'] !== null && $blockedDate->attendant_user_id === $identity['user_id']) {
+            return true;
+        }
+
+        $blockedName = trim((string) ($blockedDate->attendant_name ?? ''));
+        if ($blockedName === '') {
+            return false;
+        }
+
+        if ($identity['name'] !== '' && $blockedName === $identity['name']) {
+            return true;
+        }
+
+        return in_array($blockedName, $identity['aliases'], true);
     }
 
     /**

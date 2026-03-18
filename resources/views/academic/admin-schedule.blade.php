@@ -1,7 +1,7 @@
 @php
     $title = 'Gerenciar horários | Admin';
     $role = 'admin';
-    $displayName = auth()->user()?->name ?? 'Admin · Sec. Acadêmica';
+    $displayName = auth()->user()?->name ?? 'Administrador';
     $blockedDates = collect($blockedDates ?? []);
     $attendants = collect($attendants ?? []);
     $selectedAttendantKey = $selectedAttendantKey ?? ((array) $attendants->first())['key'] ?? '';
@@ -15,6 +15,12 @@
         'slot_duration_minutes' => 30,
     ];
     $daySettings = $schedule['day_settings'] ?? [];
+    $selectedDate = $selectedDate ?? now(config('app.timezone'));
+    $selectedDateLabel = $selectedDateLabel ?? $selectedDate->locale('pt_BR')->translatedFormat('D, d/m');
+    $selectedDateReason = $selectedDateReason ?? null;
+    $calendarMonthLabel = $calendarMonthLabel ?? $selectedDate->locale('pt_BR')->translatedFormat('M/Y');
+    $occupationCalendarDays = collect($occupationCalendarDays ?? []);
+    $selectedDateSlots = collect($selectedDateSlots ?? []);
 @endphp
 
 <x-layouts.academic :title="$title" :role="$role" active="horarios" :userName="$displayName" userInitials="AD">
@@ -143,10 +149,10 @@
             <div class="space-y-4">
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <div class="mb-4 flex items-center justify-between">
-                        <h2 class="text-3xl font-semibold">Ocupação — Mar/2026</h2>
+                        <h2 class="text-3xl font-semibold">Ocupação — {{ $calendarMonthLabel }}</h2>
                         <div class="flex gap-2">
-                            <button class="rounded-xl border border-zinc-700 px-3 py-1 text-sm">‹</button>
-                            <button class="rounded-xl border border-zinc-700 px-3 py-1 text-sm">›</button>
+                            <a href="{{ route('academic.admin.schedule', ['attendant' => $selectedAttendantKey, 'date' => $selectedDate->copy()->subMonthNoOverflow()->toDateString()]) }}" class="rounded-xl border border-zinc-700 px-3 py-1 text-sm">‹</a>
+                            <a href="{{ route('academic.admin.schedule', ['attendant' => $selectedAttendantKey, 'date' => $selectedDate->copy()->addMonthNoOverflow()->toDateString()]) }}" class="rounded-xl border border-zinc-700 px-3 py-1 text-sm">›</a>
                         </div>
                     </div>
 
@@ -155,46 +161,51 @@
                             <span class="text-zinc-500">{{ $day }}</span>
                         @endforeach
 
-                        @foreach (range(1, 31) as $day)
+                        @foreach ($occupationCalendarDays as $day)
+                            @if (($day['status'] ?? 'empty') === 'empty')
+                                <span class="rounded-lg py-2">&nbsp;</span>
+                                @continue
+                            @endif
+
                             @php
-                                $class = match (true) {
-                                    in_array($day, [1, 3, 8, 15, 17, 20, 22, 26, 27, 29, 31], true) => 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
-                                    in_array($day, [2, 4, 9, 11, 12, 16, 18, 23, 30], true) => 'border-violet-500/30 bg-violet-500/15 text-violet-200',
-                                    in_array($day, [5, 6, 10, 13, 24], true) => 'border-rose-500/30 bg-rose-500/15 text-rose-300',
+                                $class = match ($day['status']) {
+                                    'available' => 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
+                                    'partial' => 'border-violet-500/30 bg-violet-500/15 text-violet-200',
+                                    'full' => 'border-rose-500/30 bg-rose-500/15 text-rose-300',
                                     default => 'border-zinc-800 bg-zinc-800/40 text-zinc-500',
                                 };
                             @endphp
-                            <span class="rounded-lg border py-2 {{ $class }} {{ $day === 16 ? 'ring-2 ring-white/70' : '' }}">{{ $day }}</span>
+
+                            <a href="{{ route('academic.admin.schedule', ['attendant' => $selectedAttendantKey, 'date' => $day['date']]) }}" title="{{ $day['reason'] ?? '' }}" class="block rounded-lg border py-2 {{ $class }} {{ ($day['isToday'] ?? false) ? 'ring-1 ring-white/50' : '' }} {{ ($day['isSelected'] ?? false) ? 'ring-2 ring-violet-300' : '' }}">{{ $day['day'] }}</a>
                         @endforeach
                     </div>
 
                     <div class="mt-4 flex flex-wrap gap-3 text-sm text-zinc-400">
-                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-emerald-400"></span> Com vaga</span>
-                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-violet-300"></span> Parcial</span>
-                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-rose-400"></span> Lotado</span>
-                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-zinc-500"></span> Bloqueado</span>
+                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-emerald-400"></span> Disponível</span>
+                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-violet-300"></span> Disponibilidade parcial</span>
+                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-rose-400"></span> Indisponível (lotado)</span>
+                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-zinc-500"></span> Indisponível por regra</span>
                     </div>
+
+                    @if ($selectedDateReason)
+                        <p class="mt-3 rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-300">
+                            Motivo do bloqueio em {{ $selectedDate->format('d/m') }}: {{ $selectedDateReason }}
+                        </p>
+                    @endif
                 </article>
 
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-                    <h3 class="text-3xl font-semibold">Slots — Seg, 16/03</h3>
+                    <h3 class="text-3xl font-semibold">Slots — {{ $selectedDateLabel }}</h3>
                     <div class="mt-4 divide-y divide-zinc-800">
-                        @foreach ([
-                            ['08:00 - 08:30', 'Marcus Vinícius', 'Ocupado', 'bg-violet-500/20 text-violet-300'],
-                            ['08:30 - 09:00', '—', 'Livre', 'bg-emerald-500/20 text-emerald-300'],
-                            ['09:00 - 09:30', 'Gabriel Silva', 'Ocupado', 'bg-violet-500/20 text-violet-300'],
-                            ['09:30 - 10:00', '—', 'Livre', 'bg-emerald-500/20 text-emerald-300'],
-                            ['10:00 - 10:30', 'Luiz Gabriel', 'Ocupado', 'bg-violet-500/20 text-violet-300'],
-                            ['10:30 - 11:00', '—', 'Livre', 'bg-emerald-500/20 text-emerald-300'],
-                            ['12:00 - 13:00', '—', 'Intervalo', 'bg-zinc-700 text-zinc-300'],
-                            ['13:00 - 13:30', '—', 'Livre', 'bg-emerald-500/20 text-emerald-300'],
-                        ] as [$time, $name, $status, $statusClass])
+                        @forelse ($selectedDateSlots as $slot)
                             <div class="flex items-center justify-between py-2.5">
-                                <span class="font-semibold text-zinc-200">{{ $time }}</span>
-                                <span class="text-zinc-400">{{ $name }}</span>
-                                <span class="rounded-full px-3 py-1 text-sm font-medium {{ $statusClass }}">{{ $status }}</span>
+                                <span class="font-semibold text-zinc-200">{{ $slot['time_range'] }}</span>
+                                <span class="text-zinc-400">{{ $slot['name'] }}</span>
+                                <span class="rounded-full px-3 py-1 text-sm font-medium {{ $slot['status_class'] }}">{{ $slot['status'] }}</span>
                             </div>
-                        @endforeach
+                        @empty
+                            <p class="py-2 text-sm text-zinc-400">Nenhum slot configurado para esta data.</p>
+                        @endforelse
                     </div>
                 </article>
             </div>
@@ -217,7 +228,7 @@
 
                 <div>
                     <label class="mb-2 block text-zinc-400">Motivo</label>
-                    <input name="reason" type="text" value="{{ old('reason') }}" placeholder="ex: Feriado, recesso, manutenção..." class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
+                    <input name="reason" type="text" value="{{ old('reason') }}" placeholder="Informe o motivo do bloqueio" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
                 </div>
 
                 <div>

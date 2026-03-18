@@ -2,7 +2,7 @@
     $title = 'Início | Professor';
     $role = 'professor';
     $user = auth()->user();
-    $displayName = $user?->name ?? 'Professor Exemplo';
+    $displayName = $user?->name ?? 'Professor';
     $firstName = str($displayName)->before(' ');
     $appointments = collect($appointments ?? []);
     $todayCount = $todayCount ?? $appointments->whereIn('status', ['Confirmado', 'Pendente', 'Realizado'])->count();

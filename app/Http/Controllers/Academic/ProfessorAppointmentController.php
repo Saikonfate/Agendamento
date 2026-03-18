@@ -17,6 +17,8 @@ class ProfessorAppointmentController extends Controller
 
     public function updateStatus(Request $request, Appointment $appointment): RedirectResponse
     {
+        $this->scheduling->applyAutomaticNoShowRules();
+
         /** @var User|null $user */
         $user = $request->user();
         $aliases = $this->professorAliases((string) ($user?->name ?? ''));
@@ -40,6 +42,10 @@ class ProfessorAppointmentController extends Controller
 
         if (! in_array($appointment->status, ['Confirmado', 'Pendente'], true)) {
             return back()->with('status', 'Este agendamento não pode mais ser atualizado.');
+        }
+
+        if ($validated['status'] === 'Cancelado' && ! $this->scheduling->canModifyScheduledAppointment($appointment->scheduled_at)) {
+            return back()->with('status', $this->scheduling->modificationWindowMessage());
         }
 
         $appointment->update([

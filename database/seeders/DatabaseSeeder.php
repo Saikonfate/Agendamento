@@ -111,10 +111,16 @@ class DatabaseSeeder extends Seeder
         }
 
         if (Schema::hasTable('blocked_dates')) {
+            $saoJoseDate = Carbon::createFromDate(Carbon::today()->year, 3, 19);
+            if ($saoJoseDate->isPast()) {
+                $saoJoseDate->addYear();
+            }
+
             BlockedDate::query()->updateOrCreate(
                 [
-                    'blocked_date' => Carbon::today()->addDays(2)->toDateString(),
+                    'blocked_date' => $saoJoseDate->toDateString(),
                     'attendant_user_id' => null,
+                    'attendant_name' => null,
                 ],
                 [
                     'reason' => 'Feriado — Dia de São José',

@@ -25,6 +25,27 @@ class StudentAppointmentController extends Controller
     {
         $user = $request->user();
         $registration = (string) ($user->matricula ?? '');
+        $attendants = $this->availableAttendants();
+
+        $selectedAttendantKey = $request->string('attendant')->toString();
+
+        if ($selectedAttendantKey === '' && $request->filled('attendant_user_id')) {
+            $selectedAttendantKey = 'user:'.$request->integer('attendant_user_id');
+        }
+
+        if ($selectedAttendantKey === '' && $request->filled('attendant_name')) {
+            $selectedAttendantKey = 'name:'.$request->string('attendant_name')->toString();
+        }
+
+        if ($selectedAttendantKey === '' || ! $attendants->contains(fn (array $attendant) => $attendant['key'] === $selectedAttendantKey)) {
+            $selectedAttendantKey = '';
+        }
+
+        $selectedAttendant = $attendants
+            ->first(fn (array $attendant) => $attendant['key'] === $selectedAttendantKey);
+
+        $selectedAttendantName = is_array($selectedAttendant) ? (string) ($selectedAttendant['name'] ?? '') : '';
+        $selectedAttendantUserId = is_array($selectedAttendant) ? ($selectedAttendant['user_id'] ?? null) : null;
 
         $appointments = Appointment::query()
             ->with('attendantUser:id,name')
@@ -36,7 +57,106 @@ class StudentAppointmentController extends Controller
         $completedCount = $appointments->where('status', 'Realizado')->count();
 
         $today = Carbon::today();
-        $todayAvailableCount = $this->availableSlotsCountForDate($today);
+        $minimumReferenceDate = $today->copy()->addDays(SchedulingService::MIN_DAYS_IN_ADVANCE);
+        $todayAvailableCount = $selectedAttendantName !== ''
+            ? $this->availableSlotsCountForDate($minimumReferenceDate, $selectedAttendantName, $selectedAttendantUserId)
+            : 0;
+
+        $monthStart = $today->copy()->startOfMonth();
+        $daysInMonth = $monthStart->daysInMonth;
+        $calendarMonthLabel = ucfirst($monthStart->copy()->locale('pt_BR')->translatedFormat('M/Y'));
+        $blockedDates = BlockedDate::query()
+            ->whereBetween('blocked_date', [$monthStart->copy()->startOfMonth(), $monthStart->copy()->endOfMonth()])
+            ->get(['blocked_date', 'reason', 'attendant_name', 'attendant_user_id']);
+
+        $calendarDays = [];
+
+        foreach (range(0, (int) $monthStart->dayOfWeek - 1) as $index) {
+            $calendarDays[] = [
+                'day' => null,
+                'isToday' => false,
+                'status' => 'empty',
+            ];
+        }
+
+        foreach (range(1, $daysInMonth) as $day) {
+            $dayDate = $monthStart->copy()->day($day);
+            $status = 'neutral';
+            $unavailabilityReason = null;
+
+            if ($selectedAttendantName !== '') {
+                $isSystemDay = $this->isSystemWorkingDay($dayDate, $selectedAttendantName, $selectedAttendantUserId);
+                $availableCount = $this->availableSlotsCountForDate($dayDate, $selectedAttendantName, $selectedAttendantUserId);
+                $unavailabilityReason = $this->calendarUnavailabilityReason($dayDate, $selectedAttendantName, $selectedAttendantUserId, $blockedDates);
+
+                if (! $isSystemDay) {
+                    $status = 'unavailable';
+                } elseif ($availableCount > 0) {
+                    $status = 'available';
+                } else {
+                    $status = 'full';
+                }
+
+                if ($unavailabilityReason === null && $status === 'full') {
+                    $unavailabilityReason = 'Sem horários disponíveis neste dia.';
+                }
+            } else {
+                $isAnySystemDay = false;
+                $hasAnyAvailability = false;
+
+                $globalBlockedReasons = $blockedDates
+                    ->filter(fn (BlockedDate $blockedDate): bool => $blockedDate->blocked_date->isSameDay($dayDate))
+                    ->filter(fn (BlockedDate $blockedDate): bool => $blockedDate->attendant_user_id === null && trim((string) ($blockedDate->attendant_name ?? '')) === '')
+                    ->pluck('reason')
+                    ->filter(fn (?string $reason): bool => trim((string) $reason) !== '')
+                    ->unique()
+                    ->values();
+
+                foreach ($attendants as $attendant) {
+                    $attendantName = (string) ($attendant['name'] ?? '');
+                    $attendantUserId = $attendant['user_id'] ?? null;
+
+                    if ($attendantName === '') {
+                        continue;
+                    }
+
+                    $isSystemDay = $this->isSystemWorkingDay($dayDate, $attendantName, $attendantUserId);
+
+                    if (! $isSystemDay) {
+                        continue;
+                    }
+
+                    $isAnySystemDay = true;
+
+                    $availableCount = $this->availableSlotsCountForDate($dayDate, $attendantName, $attendantUserId);
+                    if ($availableCount > 0) {
+                        $hasAnyAvailability = true;
+                        break;
+                    }
+                }
+
+                if (! $isAnySystemDay) {
+                    $status = 'unavailable';
+                    $unavailabilityReason = $globalBlockedReasons->isNotEmpty()
+                        ? $globalBlockedReasons->implode(' · ')
+                        : 'Dia sem expediente para os atendentes disponíveis.';
+                } elseif ($hasAnyAvailability) {
+                    $status = 'available';
+                } else {
+                    $status = 'full';
+                    $unavailabilityReason = $globalBlockedReasons->isNotEmpty()
+                        ? $globalBlockedReasons->implode(' · ')
+                        : 'Sem horários disponíveis neste dia.';
+                }
+            }
+
+            $calendarDays[] = [
+                'day' => $day,
+                'isToday' => $dayDate->isToday(),
+                'status' => $status,
+                'unavailability_reason' => $unavailabilityReason,
+            ];
+        }
 
         $upcomingAppointments = $appointments
             ->filter(fn (Appointment $appointment) => $appointment->scheduled_at->greaterThanOrEqualTo(now()))
@@ -49,24 +169,48 @@ class StudentAppointmentController extends Controller
             ->limit(5)
             ->get(['message', 'tone']);
 
-        $availableSlotsToday = $this->buildSlotsForDate($today);
+        $slotsReferenceDate = $minimumReferenceDate->copy();
+        $availableSlotsToday = [];
+
+        if ($selectedAttendantName !== '') {
+            $availableSlotsToday = $this->buildSlotsForDate($slotsReferenceDate, $selectedAttendantName, $selectedAttendantUserId);
+            $hasAvailabilityOnReferenceDate = collect($availableSlotsToday)->contains(fn (array $slot) => $slot['available'] === true);
+
+            if (! $hasAvailabilityOnReferenceDate) {
+                $nextAvailableDate = $this->nextAvailableDate($slotsReferenceDate->copy()->addDay(), $selectedAttendantName, $selectedAttendantUserId);
+
+                if ($nextAvailableDate) {
+                    $slotsReferenceDate = $nextAvailableDate;
+                    $availableSlotsToday = $this->buildSlotsForDate($slotsReferenceDate, $selectedAttendantName, $selectedAttendantUserId);
+                }
+            }
+        }
 
         return view('academic.student-dashboard', [
             'activeCount' => $activeCount,
             'completedCount' => $completedCount,
             'todayAvailableCount' => $todayAvailableCount,
+            'attendants' => $attendants,
+            'selectedAttendantKey' => $selectedAttendantKey,
+            'selectedAttendantName' => $selectedAttendantName,
+            'calendarMonthLabel' => $calendarMonthLabel,
+            'calendarDays' => $calendarDays,
             'upcomingAppointments' => $upcomingAppointments,
             'notices' => $notices,
             'availableSlotsToday' => $availableSlotsToday,
             'todayLabel' => $today->format('d/m/Y'),
+            'slotsReferenceDateLabel' => $slotsReferenceDate->format('d/m/Y'),
+            'isSlotsReferenceToday' => $slotsReferenceDate->isToday(),
         ]);
     }
 
     public function create(Request $request): View
     {
+        $dateWasProvided = $request->filled('date');
+
         $date = $request->filled('date')
             ? Carbon::parse($request->string('date')->toString())
-            : Carbon::today()->addDay();
+            : Carbon::today();
 
         $attendantFilter = old('attendant_key', $request->string('attendant')->toString());
 
@@ -93,10 +237,27 @@ class StudentAppointmentController extends Controller
         $attendantName = is_array($selectedAttendant) ? (string) ($selectedAttendant['name'] ?? '') : null;
         $attendantUserId = is_array($selectedAttendant) ? ($selectedAttendant['user_id'] ?? null) : null;
 
+        if ($attendantName !== null && $date->isToday() && (! $dateWasProvided || $request->string('date')->toString() === Carbon::today()->toDateString())) {
+            $todaySlots = $this->buildSlotsForDate($date, $attendantName, $attendantUserId);
+            $hasFutureAvailabilityToday = collect($todaySlots)->contains(fn (array $slot) => $slot['available'] === true);
+
+            if (! $hasFutureAvailabilityToday) {
+                $nextAvailableDate = $this->nextAvailableDate($date->copy()->addDay(), $attendantName, $attendantUserId);
+
+                if ($nextAvailableDate) {
+                    $date = $nextAvailableDate;
+                }
+            }
+        }
+
         $slots = $this->buildSlotsForDate($date, $attendantName, $attendantUserId);
 
         $monthStart = $date->copy()->startOfMonth();
         $daysInMonth = $monthStart->daysInMonth;
+        $blockedDates = BlockedDate::query()
+            ->whereBetween('blocked_date', [$monthStart->copy()->startOfMonth(), $monthStart->copy()->endOfMonth()])
+            ->get(['blocked_date', 'reason', 'attendant_name', 'attendant_user_id']);
+
         $slotsByDate = [];
         $calendarDays = [];
 
@@ -120,6 +281,12 @@ class StudentAppointmentController extends Controller
                 $dateKey = $dayDate->format('Y-m-d');
                 $dateSlots = $this->buildSlotsForDate($dayDate, $attendantNameInLoop, $attendantUserIdInLoop);
                 $availableCount = collect($dateSlots)->where('available', true)->count();
+                $isSystemDay = $this->isSystemWorkingDay($dayDate, $attendantNameInLoop, $attendantUserIdInLoop);
+                $unavailabilityReason = $this->calendarUnavailabilityReason($dayDate, $attendantNameInLoop, $attendantUserIdInLoop, $blockedDates);
+
+                if ($unavailabilityReason === null && $availableCount === 0) {
+                    $unavailabilityReason = 'Sem horários disponíveis neste dia.';
+                }
 
                 $attendantDateSlots[$dateKey] = $dateSlots;
                 $attendantCalendarDays[] = [
@@ -128,7 +295,8 @@ class StudentAppointmentController extends Controller
                     'isToday' => $dayDate->isToday(),
                     'isSelected' => $dayDate->isSameDay($date),
                     'hasAvailability' => $availableCount > 0,
-                    'isSystemDay' => $this->isSystemWorkingDay($dayDate, $attendantNameInLoop, $attendantUserIdInLoop),
+                    'isSystemDay' => $isSystemDay,
+                    'unavailability_reason' => $unavailabilityReason,
                 ];
             }
 
@@ -141,6 +309,12 @@ class StudentAppointmentController extends Controller
             $dateKey = $dayDate->format('Y-m-d');
             $dateSlots = $this->buildSlotsForDate($dayDate, $attendantName, $attendantUserId);
             $availableCount = collect($dateSlots)->where('available', true)->count();
+            $isSystemDay = $this->isSystemWorkingDay($dayDate, $attendantName, $attendantUserId);
+            $unavailabilityReason = $this->calendarUnavailabilityReason($dayDate, $attendantName, $attendantUserId, $blockedDates);
+
+            if ($unavailabilityReason === null && $availableCount === 0) {
+                $unavailabilityReason = 'Sem horários disponíveis neste dia.';
+            }
 
             $slotsByDate[$dateKey] = $dateSlots;
             $calendarDays[] = [
@@ -149,7 +323,8 @@ class StudentAppointmentController extends Controller
                 'isToday' => $dayDate->isToday(),
                 'isSelected' => $dayDate->isSameDay($date),
                 'hasAvailability' => $availableCount > 0,
-                'isSystemDay' => $this->isSystemWorkingDay($dayDate, $attendantName, $attendantUserId),
+                'isSystemDay' => $isSystemDay,
+                'unavailability_reason' => $unavailabilityReason,
             ];
         }
 
@@ -173,6 +348,8 @@ class StudentAppointmentController extends Controller
     {
         $user = $request->user();
         $registration = (string) ($user->matricula ?? '');
+
+        $this->scheduling->applyAutomaticNoShowRules();
 
         $validated = $request->validate([
             'attendant_key' => ['nullable', 'string', 'required_without:attendant_name'],
@@ -215,9 +392,42 @@ class StudentAppointmentController extends Controller
 
         $scheduledAt = Carbon::createFromFormat('Y-m-d H:i', $validated['date'].' '.$validated['time']);
 
+        $schedulingError = $this->scheduling->schedulingValidationError($scheduledAt);
+        if ($schedulingError !== null) {
+            return back()->withInput()->withErrors([
+                'time' => $this->scheduling->schedulingValidationMessage($schedulingError),
+            ]);
+        }
+
+        if ($this->scheduling->isStudentBlockedByNoShow($registration)) {
+            return back()->withInput()->withErrors([
+                'time' => $this->scheduling->studentNoShowBlockMessage(),
+            ]);
+        }
+
+        if ($this->scheduling->hasReachedStudentActiveLimit($registration)) {
+            return back()->withInput()->withErrors([
+                'time' => 'Você já atingiu o limite de '.SchedulingService::MAX_ACTIVE_APPOINTMENTS_PER_STUDENT.' agendamentos ativos.',
+            ]);
+        }
+
+        $studentConflict = $this->scheduling->hasStudentActiveConflict($registration, $scheduledAt);
+
+        if ($studentConflict) {
+            return back()->withInput()->withErrors([
+                'time' => 'Você já possui um agendamento ativo nesse mesmo horário.',
+            ]);
+        }
+
+        if (! $this->scheduling->hasAttendantShiftCapacity($scheduledAt, $attendantName, $attendantUserId)) {
+            return back()->withInput()->withErrors([
+                'time' => 'Capacidade máxima do atendente para este turno foi atingida.',
+            ]);
+        }
+
         if (! $this->isSystemWorkingDay($scheduledAt, $attendantName, $attendantUserId)) {
             return back()->withInput()->withErrors([
-                'date' => 'Esta data não está disponível no calendário do sistema.',
+                'date' => 'Esta data está indisponível por regra do calendário do sistema.',
             ]);
         }
 
@@ -227,7 +437,7 @@ class StudentAppointmentController extends Controller
 
         if (! $slotAvailable) {
             return back()->withInput()->withErrors([
-                'time' => 'Este horário não está disponível no calendário do sistema.',
+                'time' => 'Este horário está indisponível por regra do calendário do sistema.',
             ]);
         }
 
@@ -305,8 +515,13 @@ class StudentAppointmentController extends Controller
             return back()->with('status', 'Este agendamento não pode mais ser cancelado.');
         }
 
+        if (! $this->scheduling->canModifyScheduledAppointment($appointment->scheduled_at)) {
+            return back()->with('status', $this->scheduling->modificationWindowMessage());
+        }
+
         $appointment->update([
             'status' => 'Cancelado',
+            'cancellation_reason' => 'Cancelado pelo aluno',
         ]);
 
         return back()->with('status', 'Agendamento cancelado com sucesso.');
@@ -444,12 +659,6 @@ class StudentAppointmentController extends Controller
                 }
             });
 
-        if (empty($attendants)) {
-            $addAttendant('Sec. Acadêmica');
-            $addAttendant('Prof. Ramon');
-            $addAttendant('Prof. Ana Lima');
-        }
-
         return collect(array_values($attendants))
             ->sortBy('name')
             ->values();
@@ -465,5 +674,81 @@ class StudentAppointmentController extends Controller
         $name = preg_replace('/^(prof\.?|professor)\s+/iu', '', $name) ?: $name;
 
         return 'Prof. '.trim($name);
+    }
+
+    private function nextAvailableDate(Carbon $startDate, string $attendantName, ?int $attendantUserId = null, int $maxDaysAhead = 60): ?Carbon
+    {
+        for ($offset = 0; $offset <= $maxDaysAhead; $offset++) {
+            $candidate = $startDate->copy()->addDays($offset);
+
+            if (! $this->isSystemWorkingDay($candidate, $attendantName, $attendantUserId)) {
+                continue;
+            }
+
+            $hasAvailability = collect($this->buildSlotsForDate($candidate, $attendantName, $attendantUserId))
+                ->contains(fn (array $slot) => $slot['available'] === true);
+
+            if ($hasAvailability) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function calendarUnavailabilityReason(
+        Carbon $date,
+        ?string $attendantName,
+        ?int $attendantUserId,
+        Collection $blockedDates,
+    ): ?string {
+        if ($date->isWeekend()) {
+            return 'Fim de semana.';
+        }
+
+        if (! $this->scheduling->isSystemWorkingDay($date, $attendantName, $attendantUserId)) {
+            return 'Dia sem expediente para este atendente.';
+        }
+
+        $identity = $this->scheduling->resolveAttendant($attendantName, $attendantUserId);
+
+        $reasons = $blockedDates
+            ->filter(fn (BlockedDate $blockedDate): bool => $blockedDate->blocked_date->isSameDay($date))
+            ->filter(fn (BlockedDate $blockedDate): bool => $this->blockedDateAppliesToIdentity($blockedDate, $identity))
+            ->pluck('reason')
+            ->filter(fn (?string $reason): bool => trim((string) $reason) !== '')
+            ->unique()
+            ->values();
+
+        if ($reasons->isEmpty()) {
+            return null;
+        }
+
+        return $reasons->implode(' · ');
+    }
+
+    /**
+     * @param array{user_id: int|null, name: string, aliases: array<int, string>} $identity
+     */
+    private function blockedDateAppliesToIdentity(BlockedDate $blockedDate, array $identity): bool
+    {
+        if ($blockedDate->attendant_user_id === null && ($blockedDate->attendant_name === null || $blockedDate->attendant_name === '')) {
+            return true;
+        }
+
+        if ($identity['user_id'] !== null && $blockedDate->attendant_user_id === $identity['user_id']) {
+            return true;
+        }
+
+        $blockedName = trim((string) ($blockedDate->attendant_name ?? ''));
+        if ($blockedName === '') {
+            return false;
+        }
+
+        if ($identity['name'] !== '' && $blockedName === $identity['name']) {
+            return true;
+        }
+
+        return in_array($blockedName, $identity['aliases'], true);
     }
 }

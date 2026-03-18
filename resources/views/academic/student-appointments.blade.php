@@ -1,7 +1,7 @@
 @php
     $title = 'Meus Agendamentos | Aluno';
     $role = 'student';
-    $displayName = auth()->user()?->name ?? 'Gabriel Silva';
+    $displayName = auth()->user()?->name ?? 'Aluno';
     $appointments = collect($appointments ?? []);
     $statusFilter = $statusFilter ?? 'Todos';
     $search = $search ?? '';

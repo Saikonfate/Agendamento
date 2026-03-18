@@ -1,7 +1,7 @@
 @php
     $title = 'Cadastros | Admin';
     $role = 'admin';
-    $displayName = auth()->user()?->name ?? 'Admin · Sec. Acadêmica';
+    $displayName = auth()->user()?->name ?? 'Administrador';
     $activeTab = $errors->studentCreate->isNotEmpty() ? 'student' : ($errors->professorCreate->isNotEmpty() ? 'professor' : 'student');
     $students = \App\Models\User::query()->where('role', 'student')->latest()->take(6)->get();
     $professors = \App\Models\User::query()->where('role', 'professor')->latest()->take(6)->get();
@@ -27,12 +27,12 @@
                         <h2 class="text-3xl font-semibold">Novo cadastro — Aluno</h2>
                         <div>
                             <label class="mb-2 block text-zinc-400">Nome completo</label>
-                            <input type="text" name="name" value="{{ old('name') }}" placeholder="ex: Gabriel Silva" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
+                            <input type="text" name="name" value="{{ old('name') }}" placeholder="Digite o nome completo" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
                             @error('name', 'studentCreate')<p class="mt-1 text-sm text-rose-400">{{ $message }}</p>@enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-zinc-400">E-mail pessoal (opcional)</label>
-                            <input type="email" name="personal_email" value="{{ old('personal_email') }}" placeholder="ex: aluno@gmail.com" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
+                            <input type="email" name="personal_email" value="{{ old('personal_email') }}" placeholder="Digite o e-mail pessoal" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
                             @error('personal_email', 'studentCreate')<p class="mt-1 text-sm text-rose-400">{{ $message }}</p>@enderror
                         </div>
                         <div>
@@ -59,12 +59,12 @@
                         <h2 class="text-3xl font-semibold">Novo cadastro — Professor</h2>
                         <div>
                             <label class="mb-2 block text-zinc-400">Nome completo</label>
-                            <input type="text" name="name" value="{{ old('name') }}" placeholder="ex: Ana Lima" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
+                            <input type="text" name="name" value="{{ old('name') }}" placeholder="Digite o nome completo" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
                             @error('name', 'professorCreate')<p class="mt-1 text-sm text-rose-400">{{ $message }}</p>@enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-zinc-400">E-mail pessoal (opcional)</label>
-                            <input type="email" name="personal_email" value="{{ old('personal_email') }}" placeholder="ex: professor@gmail.com" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
+                            <input type="email" name="personal_email" value="{{ old('personal_email') }}" placeholder="Digite o e-mail pessoal" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
                             @error('personal_email', 'professorCreate')<p class="mt-1 text-sm text-rose-400">{{ $message }}</p>@enderror
                         </div>
                         <div>

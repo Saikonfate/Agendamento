@@ -2,10 +2,10 @@
     $title = 'Perfil | Aluno';
     $role = 'student';
     $user = auth()->user();
-    $displayName = $user?->name ?? 'Gabriel Silva Nunes';
-    $institutionalEmail = $user?->email ?? 'aluno@unifap.edu.br';
+    $displayName = $user?->name ?? 'Aluno';
+    $institutionalEmail = $user?->email ?? '';
     $personalEmail = $user?->personal_email ?? '';
-    $matricula = $user?->matricula ?? '20241180203';
+    $matricula = $user?->matricula ?? '';
     $initials = str($displayName)->explode(' ')->take(2)->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))->implode('');
     $photoUrl = $user?->profilePhotoUrl();
     $recentActivities = collect($recentActivities ?? []);
@@ -81,7 +81,7 @@
                     </div>
                     <div>
                         <label class="mb-2 block text-sm font-medium text-zinc-400">E-mail pessoal</label>
-                        <input type="email" name="personal_email" value="{{ old('personal_email', $personalEmail) }}" placeholder="ex: seuemail@gmail.com" class="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-lg text-zinc-200" />
+                        <input type="email" name="personal_email" value="{{ old('personal_email', $personalEmail) }}" placeholder="Digite seu e-mail pessoal" class="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-lg text-zinc-200" />
                         @error('personal_email', 'profileUpdate')<p class="mt-2 text-sm text-rose-300">{{ $message }}</p>@enderror
                     </div>
                     <div class="flex flex-wrap gap-3 pt-2">

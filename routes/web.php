@@ -111,6 +111,10 @@ Route::patch('/admin/agendamentos/{appointment}/reagendar', [AdminAppointmentCon
     ->middleware(['auth', 'role:admin'])
     ->name('academic.admin.appointments.reschedule');
 
+Route::get('/admin/agendamentos/{appointment}/slots', [AdminAppointmentController::class, 'slots'])
+    ->middleware(['auth', 'role:admin'])
+    ->name('academic.admin.appointments.slots');
+
 Route::get('/admin/perfil', [ProfilePageController::class, 'admin'])
     ->middleware(['auth', 'role:admin'])
     ->name('academic.admin.profile');

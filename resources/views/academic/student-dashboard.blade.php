@@ -2,16 +2,28 @@
     $title = 'Início | Aluno';
     $role = 'student';
     $user = auth()->user();
-    $displayName = $user?->name ?? 'Gabriel Silva';
+    $displayName = $user?->name ?? 'Aluno';
     $firstName = str($displayName)->before(' ');
     $mustChangePassword = (bool) ($user?->must_change_password ?? false);
     $activeCount = $activeCount ?? 0;
     $completedCount = $completedCount ?? 0;
     $todayAvailableCount = $todayAvailableCount ?? 0;
+    $attendants = collect($attendants ?? []);
+    $selectedAttendantKey = $selectedAttendantKey ?? '';
+    $selectedAttendantName = $selectedAttendantName ?? '';
+    $calendarMonthLabel = $calendarMonthLabel ?? now()->locale('pt_BR')->translatedFormat('M/Y');
+    $calendarDays = collect($calendarDays ?? []);
     $upcomingAppointments = collect($upcomingAppointments ?? []);
     $notices = collect($notices ?? []);
     $availableSlotsToday = collect($availableSlotsToday ?? []);
     $todayLabel = $todayLabel ?? now()->format('d/m/Y');
+    $slotsReferenceDateLabel = $slotsReferenceDateLabel ?? $todayLabel;
+    $isSlotsReferenceToday = (bool) ($isSlotsReferenceToday ?? true);
+    $newAppointmentParams = ['date' => now()->toDateString()];
+
+    if ($selectedAttendantKey !== '') {
+        $newAppointmentParams['attendant'] = $selectedAttendantKey;
+    }
 @endphp
 
 <x-layouts.academic :title="$title" :role="$role" active="inicio" :userName="$displayName">
@@ -38,7 +50,7 @@
         </div>
 
         <div class="grid gap-4 md:grid-cols-3">
-            @foreach ([[$activeCount, 'Agendamentos ativos'], [$completedCount, 'Atendimentos realizados'], [$todayAvailableCount, 'Horários disponíveis hoje']] as [$value, $label])
+            @foreach ([[$activeCount, 'Agendamentos ativos'], [$completedCount, 'Atendimentos realizados'], [$todayAvailableCount, 'Horários na próxima data']] as [$value, $label])
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <p class="text-4xl font-bold">{{ $value }}</p>
                     <p class="text-zinc-400">{{ $label }}</p>
@@ -62,22 +74,65 @@
                     @endforelse
                 </div>
                 <div class="flex flex-wrap gap-3">
-                    <a href="{{ route('academic.student.new') }}" class="rounded-xl border border-zinc-700 px-5 py-2 text-3xl font-semibold hover:border-violet-400">+ Novo agendamento</a>
+                    <a href="{{ route('academic.student.new', $newAppointmentParams) }}" class="rounded-xl border border-zinc-700 px-5 py-2 text-3xl font-semibold hover:border-violet-400">+ Novo agendamento</a>
                     <a href="{{ route('academic.student.mine') }}" class="rounded-xl border border-zinc-700 px-5 py-2 text-3xl font-semibold hover:border-violet-400">Ver todos</a>
                 </div>
             </article>
 
             <div class="space-y-4">
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-                    <h3 class="text-3xl font-semibold">Calendário · Mar/2026</h3>
-                    <div class="mt-4 grid grid-cols-7 gap-2 text-center text-sm">
+                    <h3 class="text-3xl font-semibold">Calendário · {{ $calendarMonthLabel }}</h3>
+                    <div class="mt-3 flex flex-wrap gap-3 text-xs text-zinc-400">
+                        <span class="inline-flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>Disponível</span>
+                        <span class="inline-flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full bg-rose-400"></span>Lotado</span>
+                        <span class="inline-flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full bg-zinc-600"></span>Indisponível (ocupado ou regra)</span>
+                        <span class="inline-flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full border border-violet-400 bg-violet-500/40"></span>Hoje</span>
+                    </div>
+                    <div data-student-calendar-grid class="mt-4 grid grid-cols-7 gap-2 text-center text-sm">
                         @foreach (['D','S','T','Q','Q','S','S'] as $d)
                             <span class="text-zinc-500">{{ $d }}</span>
                         @endforeach
-                        @foreach (range(2, 28) as $day)
-                            <span class="rounded-lg py-1 {{ in_array($day, [16]) ? 'bg-violet-500/30 text-violet-200' : (in_array($day, [9,18,26]) ? 'text-emerald-400' : (in_array($day, [6,13]) ? 'text-rose-400' : 'text-zinc-400')) }}">{{ $day }}</span>
+                        @foreach ($calendarDays as $day)
+                            @if ($day['status'] === 'empty')
+                                <span class="rounded-lg py-1">&nbsp;</span>
+                                @continue
+                            @endif
+
+                            @php
+                                $statusClass = match ($day['status']) {
+                                    'available' => 'text-emerald-400',
+                                    'full' => 'text-rose-400',
+                                    'unavailable' => 'text-zinc-600',
+                                    default => 'text-zinc-400',
+                                };
+
+                                $todayClass = '';
+
+                                if ($day['isToday']) {
+                                    $statusClass = 'text-violet-200';
+                                    $todayClass = 'border border-violet-400 ring-1 ring-violet-400 bg-violet-500/25 font-semibold';
+                                }
+                            @endphp
+
+                            <button
+                                type="button"
+                                data-calendar-day
+                                data-day-label="{{ sprintf('%02d', (int) $day['day']) }}/{{ now()->format('m') }}"
+                                data-day-status="{{ $day['status'] }}"
+                                data-day-reason="{{ $day['unavailability_reason'] ?? '' }}"
+                                title="{{ $day['unavailability_reason'] ?? '' }}"
+                                class="rounded-lg py-1 transition {{ $statusClass }} {{ $todayClass }}"
+                            >{{ $day['day'] }}</button>
                         @endforeach
                     </div>
+                    <p data-calendar-day-reason class="mt-2 min-h-10 rounded-lg border border-violet-500/30 bg-violet-500/15 px-3 py-2 text-sm font-medium text-violet-100">
+                        Clique em um dia para visualizar o motivo de indisponibilidade.
+                    </p>
+                    @if ($selectedAttendantName === '')
+                        <p class="mt-3 text-xs text-zinc-500">Legenda: Roxo = hoje · Verde = disponível · Vermelho = lotado · Cinza = indisponível (ocupado ou bloqueado por regra). Passe o cursor sobre um dia indisponível para ver o motivo.</p>
+                    @else
+                        <p class="mt-3 text-xs text-zinc-500">{{ $selectedAttendantName }} · Roxo: hoje · Verde: disponível · Vermelho: lotado · Cinza: indisponível (ocupado ou bloqueado por regra). Passe o cursor sobre um dia indisponível para ver o motivo.</p>
+                    @endif
                 </article>
 
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
@@ -94,13 +149,72 @@
         </div>
 
         <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 lg:max-w-4xl">
-            <h3 class="text-3xl font-semibold">Horários disponíveis hoje — {{ $todayLabel }}</h3>
-            <p class="mt-2 text-sm italic text-zinc-500">Verde = disponível · Cinza = ocupado · Destaque = selecionado</p>
-            <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                @foreach ($availableSlotsToday as $slot)
-                    <button class="rounded-lg border px-4 py-2 text-lg {{ $slot['available'] ? 'border-emerald-700 bg-emerald-700/35 text-emerald-300' : 'border-zinc-800 bg-zinc-800 text-zinc-500 line-through' }}">{{ $slot['time'] }}</button>
-                @endforeach
-            </div>
+            <h3 class="text-3xl font-semibold">
+                {{ $isSlotsReferenceToday ? 'Horários disponíveis — '.$slotsReferenceDateLabel : 'Próxima data disponível — '.$slotsReferenceDateLabel }}
+            </h3>
+
+            <form method="GET" action="{{ route('academic.student.dashboard') }}" class="mt-4 max-w-md">
+                <label for="attendant" class="mb-2 block text-sm text-zinc-400">Selecione o atendente</label>
+                <select id="attendant" name="attendant" onchange="this.form.submit()" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5">
+                    <option value="">Selecione um atendente...</option>
+                    @foreach ($attendants as $attendant)
+                        <option value="{{ $attendant['key'] }}" @selected($selectedAttendantKey === $attendant['key'])>{{ $attendant['name'] }}</option>
+                    @endforeach
+                </select>
+            </form>
+
+            @if ($selectedAttendantName === '')
+                <p class="mt-4 text-zinc-400">Escolha um atendente para visualizar os horários da próxima data disponível.</p>
+            @else
+                <p class="mt-2 text-sm italic text-zinc-500">Exibindo agenda de {{ $selectedAttendantName }} · Verde = disponível · Cinza = indisponível (ocupado ou bloqueado por regra)</p>
+                @if (! $isSlotsReferenceToday)
+                    <p class="mt-2 text-xs text-zinc-500">Hoje não há mais horários disponíveis. Exibindo a próxima data com vaga.</p>
+                @endif
+                <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    @forelse ($availableSlotsToday as $slot)
+                        <button class="rounded-lg border px-4 py-2 text-lg {{ $slot['available'] ? 'border-emerald-700 bg-emerald-700/35 text-emerald-300' : 'border-zinc-800 bg-zinc-800 text-zinc-500 line-through' }}">{{ $slot['time'] }}</button>
+                    @empty
+                        <p class="col-span-full text-zinc-400">Nenhum horário disponível para este atendente.</p>
+                    @endforelse
+                </div>
+            @endif
         </article>
     </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dayButtons = document.querySelectorAll('[data-calendar-day]');
+            const reasonTarget = document.querySelector('[data-calendar-day-reason]');
+
+            if (!reasonTarget || !dayButtons.length) {
+                return;
+            }
+
+            dayButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    dayButtons.forEach((otherButton) => {
+                        otherButton.classList.remove('ring-2', 'ring-violet-400', 'border', 'border-violet-400', 'bg-violet-500/20');
+                    });
+
+                    button.classList.add('ring-2', 'ring-violet-400', 'border', 'border-violet-400', 'bg-violet-500/20');
+
+                    const status = button.dataset.dayStatus || '';
+                    const reason = (button.dataset.dayReason || '').trim();
+                    const dayLabel = button.dataset.dayLabel || '';
+
+                    if (status === 'available') {
+                        reasonTarget.textContent = `${dayLabel}: dia com disponibilidade.`;
+                        return;
+                    }
+
+                    if (status === 'full') {
+                        reasonTarget.textContent = `${dayLabel}: ${reason !== '' ? reason : 'dia lotado, sem horários disponíveis.'}`;
+                        return;
+                    }
+
+                    reasonTarget.textContent = `${dayLabel}: ${reason !== '' ? reason : 'indisponível por regra do calendário.'}`;
+                });
+            });
+        });
+    </script>
 </x-layouts.academic>

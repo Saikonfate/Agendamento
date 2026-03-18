@@ -1,7 +1,7 @@
 @php
     $title = 'Agenda do dia | Admin';
     $role = 'admin';
-    $displayName = auth()->user()?->name ?? 'Admin · Sec. Acadêmica';
+    $displayName = auth()->user()?->name ?? 'Administrador';
     $initialNotices = ($notices ?? collect())
         ->map(fn ($notice) => [
             'id' => $notice->id,
@@ -19,12 +19,16 @@
                 default => 'bg-violet-500/20 text-violet-300',
             };
 
-            $timeRange = $appointment->scheduled_at->format('H:i').' - '.$appointment->scheduled_at->copy()->addMinutes(30)->format('H:i');
+            $slotDuration = app(\App\Services\SchedulingService::class)
+                ->slotDurationForAttendant($appointment->attendant_name, $appointment->attendant_user_id);
+
+            $timeRange = $appointment->scheduled_at->format('H:i').' - '.$appointment->scheduled_at->copy()->addMinutes($slotDuration)->format('H:i');
 
             return [
                 'id' => $appointment->id,
                 'time' => $appointment->scheduled_at->format('H:i'),
                 'time_range' => $timeRange,
+                'date_label' => $appointment->scheduled_at->locale('pt_BR')->translatedFormat('D, d \d\e M \d\e Y'),
                 'student' => $appointment->student_name,
                 'registration' => $appointment->student_registration,
                 'attendant' => $appointment->attendant_display_name,
@@ -48,6 +52,9 @@
         ->unique()
         ->sort()
         ->values();
+        $defaultRescheduleDate = now(config('app.timezone'))
+            ->addDays(\App\Services\SchedulingService::MIN_DAYS_IN_ADVANCE)
+            ->toDateString();
 @endphp
 
 <x-layouts.academic :title="$title" :role="$role" active="agenda" :userName="$displayName" userInitials="AD">
@@ -55,7 +62,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <h1 class="text-4xl font-semibold">Agenda do dia</h1>
-                <p class="mt-1 text-zinc-400">{{ $dateLabel ?? 'Segunda-feira, 16 de março de 2026' }}</p>
+                <p class="mt-1 text-zinc-400">{{ $dateLabel ?? now(config('app.timezone'))->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y') }}</p>
             </div>
         </div>
 
@@ -73,7 +80,7 @@
                 <p data-count-pendentes class="mt-2 text-4xl font-bold text-amber-300">{{ $pendingTotal }}</p>
             </article>
             <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-                <p class="text-zinc-400">Vagos hoje</p>
+                <p class="text-zinc-400">Vagas na próxima data</p>
                 <p class="mt-2 text-4xl font-bold text-emerald-300">{{ $vacancyTotal }}</p>
             </article>
         </div>
@@ -143,6 +150,7 @@
                                                     data-time="{{ $appointment['time_range'] }}"
                                                     data-student="{{ $appointment['student'] }}"
                                                     data-registration="{{ $appointment['registration'] }}"
+                                                    data-date="{{ $appointment['date_label'] }}"
                                                     data-attendant="{{ $appointment['attendant'] }}"
                                                     data-subject="{{ $appointment['subject'] }}"
                                                     data-status="{{ $appointment['status'] }}"
@@ -160,6 +168,7 @@
                                                     data-time="{{ $appointment['time_range'] }}"
                                                     data-student="{{ $appointment['student'] }}"
                                                     data-registration="{{ $appointment['registration'] }}"
+                                                    data-date="{{ $appointment['date_label'] }}"
                                                     data-attendant="{{ $appointment['attendant'] }}"
                                                     data-subject="{{ $appointment['subject'] }}"
                                                     data-status="{{ $appointment['status'] }}"
@@ -186,38 +195,23 @@
 
             <div class="space-y-4">
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-                    <div class="mb-4 flex items-center justify-between">
-                        <h3 class="text-3xl font-semibold">Navegação rápida</h3>
-                        <div class="flex items-center gap-2">
-                            <button class="rounded-xl border border-zinc-700 px-3 py-1 text-sm font-semibold">‹ Ontem</button>
-                            <span class="px-2 text-lg font-semibold">16/03</span>
-                            <button class="rounded-xl border border-zinc-700 px-3 py-1 text-sm font-semibold">Amanhã ›</button>
+                    <h3 class="text-3xl font-semibold">Resumo operacional</h3>
+                    <p class="mt-1 text-sm text-zinc-400">{{ $dateLabel ?? now(config('app.timezone'))->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y') }}</p>
+                    <div class="mt-4 grid grid-cols-1 gap-2 text-center text-xs sm:grid-cols-3 sm:text-sm">
+                        <div class="flex min-h-20 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
+                            <p class="text-zinc-500">Confirmados</p>
+                            <p class="font-semibold leading-none text-emerald-300">{{ $confirmedTotal }}</p>
+                        </div>
+                        <div class="flex min-h-20 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
+                            <p class="text-zinc-500">Pendentes</p>
+                            <p class="font-semibold leading-none text-amber-300">{{ $pendingTotal }}</p>
+                        </div>
+                        <div class="flex min-h-20 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
+                            <p class="text-zinc-500">Realizados</p>
+                            <p class="font-semibold leading-none text-violet-300">{{ $completedTotal }}</p>
                         </div>
                     </div>
-
-                    <div class="grid grid-cols-7 gap-2 text-center text-sm">
-                        @foreach (['D', 'S', 'T', 'Q', 'Q', 'S', 'S'] as $day)
-                            <span class="text-zinc-500">{{ $day }}</span>
-                        @endforeach
-
-                        @foreach (range(1, 20) as $day)
-                            @php
-                                $class = match (true) {
-                                    in_array($day, [1, 3, 8, 15, 17, 20], true) => 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
-                                    in_array($day, [2, 4, 9, 11, 12, 16, 18], true) => 'border-violet-500/30 bg-violet-500/15 text-violet-200',
-                                    in_array($day, [5, 10, 13], true) => 'border-rose-500/30 bg-rose-500/15 text-rose-300',
-                                    default => 'border-zinc-800 bg-zinc-800/40 text-zinc-500',
-                                };
-                            @endphp
-                            <span class="rounded-lg border py-2 {{ $class }} {{ $day === 16 ? 'ring-2 ring-white/80' : '' }}">{{ $day }}</span>
-                        @endforeach
-                    </div>
-
-                    <div class="mt-4 flex flex-wrap gap-3 text-sm text-zinc-400">
-                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-emerald-400"></span> Com vaga</span>
-                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-violet-300"></span> Parcial</span>
-                        <span class="inline-flex items-center gap-1"><span class="size-2.5 rounded bg-rose-400"></span> Lotado</span>
-                    </div>
+                    <p class="mt-3 text-xs text-zinc-500">Use os filtros da agenda para refinar por status e atendente em tempo real.</p>
                 </article>
 
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
@@ -275,7 +269,7 @@
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Data</span>
-                    <span class="font-semibold text-zinc-200">Seg, 16 de março de 2026</span>
+                    <span data-details-date class="font-semibold text-zinc-200">—</span>
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Motivo da rejeição</span>
@@ -323,7 +317,7 @@
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Data</span>
-                    <span class="font-semibold text-zinc-200">Seg, 16 de março de 2026</span>
+                    <span data-attend-date class="font-semibold text-zinc-200">—</span>
                 </div>
             </div>
 
@@ -348,18 +342,12 @@
             <div class="mt-5 space-y-4">
                 <div>
                     <label for="reschedule-date" class="text-sm font-medium text-zinc-300">Nova data</label>
-                    <input id="reschedule-date" data-reschedule-date type="date" class="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-200">
+                    <input id="reschedule-date" data-reschedule-date type="date" min="{{ $defaultRescheduleDate }}" class="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-200">
                 </div>
 
                 <div>
                     <p class="text-sm font-medium text-zinc-300">Horários disponíveis</p>
-                    <div class="mt-2 grid grid-cols-4 gap-2">
-                        @foreach (['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '13:00', '13:30', '14:00', '14:30'] as $slot)
-                            <button type="button" data-reschedule-slot data-slot-value="{{ $slot }}" class="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-200 hover:border-violet-400">
-                                {{ $slot }}
-                            </button>
-                        @endforeach
-                    </div>
+                    <div data-reschedule-slots-grid class="mt-2 grid grid-cols-4 gap-2"></div>
                     <p data-selected-slot class="mt-2 text-sm text-zinc-400">Nenhum horário selecionado</p>
                 </div>
             </div>
@@ -421,7 +409,7 @@
             const openRescheduleButton = document.querySelector('[data-open-reschedule]');
             const confirmRescheduleButton = document.querySelector('[data-confirm-reschedule]');
             const rescheduleDateInput = document.querySelector('[data-reschedule-date]');
-            const rescheduleSlots = document.querySelectorAll('[data-reschedule-slot]');
+            const rescheduleSlotsGrid = document.querySelector('[data-reschedule-slots-grid]');
             const selectedSlotText = document.querySelector('[data-selected-slot]');
             const rescheduleSubtitle = document.querySelector('[data-reschedule-subtitle]');
             const openNoticesManagerButton = document.querySelector('[data-open-notices-manager]');
@@ -438,6 +426,8 @@
             const noticesApiUrl = '{{ route("academic.admin.notices.index") }}';
             const appointmentStatusUrlTemplate = '{{ route("academic.admin.appointments.status", ["appointment" => "__ID__"]) }}';
             const appointmentRescheduleUrlTemplate = '{{ route("academic.admin.appointments.reschedule", ["appointment" => "__ID__"]) }}';
+            const appointmentSlotsUrlTemplate = '{{ route("academic.admin.appointments.slots", ["appointment" => "__ID__"]) }}';
+            const defaultRescheduleDate = '{{ $defaultRescheduleDate }}';
             const csrfToken = '{{ csrf_token() }}';
             const filterButtons = document.querySelectorAll('[data-filter-button]');
             const filterCountAllEl = document.querySelector('[data-filter-count="all"]');
@@ -453,6 +443,7 @@
             const studentEl = document.querySelector('[data-details-student]');
             const registrationEl = document.querySelector('[data-details-registration]');
             const timeEl = document.querySelector('[data-details-time]');
+            const detailsDateEl = document.querySelector('[data-details-date]');
             const attendantEl = document.querySelector('[data-details-attendant]');
             const subjectEl = document.querySelector('[data-details-subject]');
             const detailsCancellationReasonEl = document.querySelector('[data-details-cancellation-reason]');
@@ -461,6 +452,7 @@
             const attendStudentEl = document.querySelector('[data-attend-student]');
             const attendRegistrationEl = document.querySelector('[data-attend-registration]');
             const attendTimeEl = document.querySelector('[data-attend-time]');
+            const attendDateEl = document.querySelector('[data-attend-date]');
             const attendAttendantEl = document.querySelector('[data-attend-attendant]');
             const attendSubjectEl = document.querySelector('[data-attend-subject]');
 
@@ -581,7 +573,16 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Não foi possível atualizar o agendamento.');
+                    let message = 'Não foi possível atualizar o agendamento.';
+
+                    try {
+                        const payload = await response.json();
+                        message = payload?.message || payload?.error || message;
+                    } catch (error) {
+                        message = 'Não foi possível atualizar o agendamento.';
+                    }
+
+                    throw new Error(message);
                 }
 
                 const payload = await response.json();
@@ -598,6 +599,89 @@
                     }
                 } catch (error) {
                     showUiFeedback('Não foi possível carregar os avisos.', 'error');
+                }
+            };
+
+            const loadRescheduleSlots = async (dateValue) => {
+                if (!currentAttendButton?.dataset.appointmentId || !dateValue) {
+                    return;
+                }
+
+                if (!rescheduleSlotsGrid) {
+                    return;
+                }
+
+                rescheduleSlotsGrid.innerHTML = '';
+                selectedRescheduleSlot = '';
+                if (selectedSlotText) {
+                    selectedSlotText.textContent = 'Nenhum horário selecionado';
+                }
+
+                try {
+                    const url = appointmentSlotsUrlTemplate.replace('__ID__', currentAttendButton.dataset.appointmentId);
+                    const response = await fetch(`${url}?date=${encodeURIComponent(dateValue)}`, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                    });
+
+                    if (!response.ok) {
+                        let message = 'Não foi possível carregar os horários.';
+
+                        try {
+                            const payload = await response.json();
+                            message = payload?.message || message;
+                        } catch (error) {
+                            message = 'Não foi possível carregar os horários.';
+                        }
+
+                        throw new Error(message);
+                    }
+
+                    const payload = await response.json();
+                    const slots = Array.isArray(payload?.data) ? payload.data : [];
+
+                    if (!slots.length) {
+                        const empty = document.createElement('p');
+                        empty.className = 'col-span-full rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-500';
+                        empty.textContent = 'Nenhum horário encontrado para esta data.';
+                        rescheduleSlotsGrid.appendChild(empty);
+                        return;
+                    }
+
+                    slots.forEach((slot) => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.dataset.rescheduleSlot = '';
+                        button.dataset.slotValue = slot.time;
+                        button.disabled = !slot.available;
+                        button.className = `rounded-xl border px-3 py-2 text-sm font-semibold ${slot.available ? 'border-zinc-700 text-zinc-200 hover:border-violet-400' : 'border-zinc-800 bg-zinc-900 text-zinc-500 cursor-not-allowed line-through'}`;
+                        button.textContent = slot.time;
+
+                        button.addEventListener('click', () => {
+                            if (!slot.available) {
+                                return;
+                            }
+
+                            selectedRescheduleSlot = slot.time;
+
+                            rescheduleSlotsGrid.querySelectorAll('[data-reschedule-slot]').forEach((otherSlotButton) => {
+                                otherSlotButton.classList.remove('bg-violet-500', 'text-white', 'border-violet-500');
+                            });
+
+                            button.classList.add('bg-violet-500', 'text-white', 'border-violet-500');
+
+                            if (selectedSlotText) {
+                                selectedSlotText.textContent = `${selectedRescheduleSlot} selecionado`;
+                            }
+                        });
+
+                        rescheduleSlotsGrid.appendChild(button);
+                    });
+                } catch (error) {
+                    showUiFeedback(error?.message || 'Não foi possível carregar os horários.', 'error');
                 }
             };
 
@@ -846,6 +930,7 @@
                     if (studentEl) studentEl.textContent = button.dataset.student || '—';
                     if (registrationEl) registrationEl.textContent = button.dataset.registration || '—';
                     if (timeEl) timeEl.textContent = button.dataset.time || '—';
+                    if (detailsDateEl) detailsDateEl.textContent = button.dataset.date || '—';
                     if (attendantEl) attendantEl.textContent = button.dataset.attendant || '—';
                     if (subjectEl) subjectEl.textContent = button.dataset.subject || '—';
                     if (detailsCancellationReasonEl) {
@@ -866,12 +951,13 @@
                     if (attendStudentEl) attendStudentEl.textContent = button.dataset.student || '—';
                     if (attendRegistrationEl) attendRegistrationEl.textContent = button.dataset.registration || '—';
                     if (attendTimeEl) attendTimeEl.textContent = button.dataset.time || '—';
+                    if (attendDateEl) attendDateEl.textContent = button.dataset.date || '—';
                     if (attendAttendantEl) attendAttendantEl.textContent = button.dataset.attendant || '—';
                     if (attendSubjectEl) attendSubjectEl.textContent = button.dataset.subject || '—';
 
                     selectedRescheduleSlot = '';
                     if (selectedSlotText) selectedSlotText.textContent = 'Nenhum horário selecionado';
-                    rescheduleSlots.forEach((slotButton) => {
+                    rescheduleSlotsGrid?.querySelectorAll('[data-reschedule-slot]').forEach((slotButton) => {
                         slotButton.classList.remove('bg-violet-500', 'text-white', 'border-violet-500');
                     });
 
@@ -1071,16 +1157,25 @@
                 withLoadingButton(cancelAppointmentButton, 'Cancelando...', async () => {
                     if (!currentAttendButton?.dataset.appointmentId) return;
 
+                    const cancellationReason = window.prompt('Informe o motivo do cancelamento:');
+                    if (!cancellationReason || cancellationReason.trim() === '') {
+                        showUiFeedback('Informe o motivo do cancelamento para continuar.', 'warning');
+                        return;
+                    }
+
                     try {
                         const url = appointmentStatusUrlTemplate.replace('__ID__', currentAttendButton.dataset.appointmentId);
-                        const response = await requestAppointment(url, { status: 'Cancelado' });
+                        const response = await requestAppointment(url, {
+                            status: 'Cancelado',
+                            cancellation_reason: cancellationReason.trim(),
+                        });
 
                         updateCurrentRowStatus(response?.status || 'Cancelado');
                         currentAttendButton = promoteActionToDetails(currentAttendButton);
                         closeModal(attendModal);
                         showUiFeedback('Agendamento cancelado com sucesso.');
                     } catch (error) {
-                        showUiFeedback('Não foi possível cancelar o agendamento.', 'error');
+                        showUiFeedback(error?.message || 'Não foi possível cancelar o agendamento.', 'error');
                     }
                 });
             });
@@ -1098,7 +1193,7 @@
                         closeModal(attendModal);
                         showUiFeedback('Atendimento marcado como realizado.');
                     } catch (error) {
-                        showUiFeedback('Não foi possível atualizar o atendimento.', 'error');
+                        showUiFeedback(error?.message || 'Não foi possível atualizar o atendimento.', 'error');
                     }
                 });
             });
@@ -1109,27 +1204,23 @@
                 }
 
                 if (rescheduleDateInput && !rescheduleDateInput.value) {
-                    rescheduleDateInput.value = '2026-03-18';
+                    rescheduleDateInput.value = defaultRescheduleDate;
+                }
+
+                if (rescheduleDateInput?.value) {
+                    loadRescheduleSlots(rescheduleDateInput.value);
                 }
 
                 closeModal(attendModal);
                 openModal(rescheduleModal);
             });
 
-            rescheduleSlots.forEach((slotButton) => {
-                slotButton.addEventListener('click', () => {
-                    selectedRescheduleSlot = slotButton.dataset.slotValue || '';
+            rescheduleDateInput?.addEventListener('change', () => {
+                if (!rescheduleDateInput.value) {
+                    return;
+                }
 
-                    rescheduleSlots.forEach((otherSlotButton) => {
-                        otherSlotButton.classList.remove('bg-violet-500', 'text-white', 'border-violet-500');
-                    });
-
-                    slotButton.classList.add('bg-violet-500', 'text-white', 'border-violet-500');
-
-                    if (selectedSlotText) {
-                        selectedSlotText.textContent = `${selectedRescheduleSlot} selecionado`;
-                    }
-                });
+                loadRescheduleSlots(rescheduleDateInput.value);
             });
 
             confirmRescheduleButton?.addEventListener('click', () => {
@@ -1139,11 +1230,18 @@
                         return;
                     }
 
+                    const rescheduleReason = window.prompt('Informe o motivo do reagendamento:');
+                    if (!rescheduleReason || rescheduleReason.trim() === '') {
+                        showUiFeedback('Informe o motivo do reagendamento para continuar.', 'warning');
+                        return;
+                    }
+
                     try {
                         const url = appointmentRescheduleUrlTemplate.replace('__ID__', currentAttendButton.dataset.appointmentId);
                         const response = await requestAppointment(url, {
                             date: rescheduleDateInput.value,
                             time: selectedRescheduleSlot,
+                            reschedule_reason: rescheduleReason.trim(),
                         });
 
                         const newRange = response?.scheduled_time_range;
@@ -1155,7 +1253,7 @@
                         closeModal(rescheduleModal);
                         showUiFeedback('Agendamento reagendado com sucesso.');
                     } catch (error) {
-                        showUiFeedback('Não foi possível reagendar o atendimento.', 'error');
+                        showUiFeedback(error?.message || 'Não foi possível reagendar o atendimento.', 'error');
                     }
                 });
             });

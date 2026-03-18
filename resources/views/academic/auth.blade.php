@@ -20,7 +20,7 @@
                 @csrf
                 <div>
                     <label class="mb-2 block text-sm text-zinc-300">Matrícula / E-mail institucional</label>
-                    <input type="text" name="login" value="{{ old('login') }}" placeholder="ex: 20241180203 ou aluno@unifap.edu.br" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-zinc-100 outline-none ring-violet-500/40 placeholder:text-zinc-500 focus:ring" />
+                    <input type="text" name="login" value="{{ old('login') }}" placeholder="Digite sua matrícula ou e-mail institucional" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-zinc-100 outline-none ring-violet-500/40 placeholder:text-zinc-500 focus:ring" />
                     @error('login')
                         <p class="mt-1 text-sm text-rose-400">{{ $message }}</p>
                     @enderror

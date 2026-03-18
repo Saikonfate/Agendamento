@@ -1,7 +1,7 @@
 @php
     $title = 'Novo Agendamento | Aluno';
     $role = 'student';
-    $displayName = auth()->user()?->name ?? 'Gabriel Silva';
+    $displayName = auth()->user()?->name ?? 'Aluno';
     $attendants = collect($attendants ?? []);
     $selectedDate = $selectedDate ?? now()->addDay();
     $selectedAttendantKey = $selectedAttendantKey ?? '';
@@ -32,10 +32,10 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-3 items-center gap-4 text-sm text-zinc-400">
+        <div class="grid grid-cols-3 items-center gap-4 text-sm text-zinc-300">
             <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-violet-400 bg-violet-500/20 text-violet-200">1</span> Tipo</div>
             <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-violet-400 bg-violet-500/20 text-violet-200">2</span> Data / Horário</div>
-            <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-zinc-700">3</span> Confirmar</div>
+            <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-violet-400 bg-violet-500/20 text-violet-200">3</span> Confirmação</div>
         </div>
 
         <form method="POST" action="{{ route('academic.student.store') }}" class="grid gap-4 lg:grid-cols-2" data-student-appointment-form>
@@ -70,7 +70,7 @@
                         </div>
                     </div>
                 </article>
- q
+
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <h3 class="text-3xl font-semibold">Horários disponíveis — <span data-slots-date-label>{{ $selectedDate->locale('pt_BR')->translatedFormat('D d/m') }}</span></h3>
                     <input data-time-input type="hidden" name="time" value="{{ $selectedTime }}" />
@@ -84,18 +84,19 @@
                     <p data-selected-time-text class="mt-2 text-sm italic text-zinc-500">
                         {{ $selectedTime !== '' ? $selectedTime.' selecionado' : 'Selecione um horário disponível para confirmar.' }}
                     </p>
+                    <p class="mt-2 text-xs text-zinc-500">Legenda: Verde = disponível · Cinza = indisponível (ocupado ou bloqueado por regra).</p>
                 </article>
 
-                <article class="rounded-2xl border border-violet-500/40 bg-violet-500/10 p-5">
-                    <h3 class="text-2xl font-semibold text-violet-200">3 · Confirmação</h3>
-                    <div class="mt-4 space-y-2 text-xl">
+                <article class="rounded-2xl border border-violet-400/60 bg-violet-500/15 p-5">
+                    <h3 class="text-2xl font-semibold text-violet-100">3 · Confirmação</h3>
+                    <div class="mt-4 space-y-2 text-xl text-zinc-200">
                         <p><span class="font-semibold">Atendente:</span> <span data-confirm-attendant>{{ $selectedAttendantName !== '' ? $selectedAttendantName : 'Selecione um atendente' }}</span></p>
                         <p><span class="font-semibold">Data:</span> <span data-confirm-date>{{ $selectedDateLongLabel }}</span></p>
                         <p><span class="font-semibold">Horário:</span> <span data-confirm-time>{{ $selectedTime !== '' ? $selectedTime.' - '.\Illuminate\Support\Carbon::createFromFormat('H:i', $selectedTime)->addMinutes(30)->format('H:i') : 'Selecione um horário' }}</span></p>
                         <p><span class="font-semibold">Motivo:</span> {{ old('subject', $subject ?: 'Informe o motivo') }}</p>
                     </div>
                     <div class="mt-5 flex flex-wrap gap-3">
-                        <button type="submit" data-submit-appointment class="rounded-xl border border-zinc-600 px-4 py-2 text-3xl font-semibold hover:border-violet-300">Confirmar agendamento</button>
+                        <button type="submit" data-submit-appointment class="rounded-xl border border-violet-300/60 bg-violet-500/20 px-4 py-2 text-3xl font-semibold text-violet-100 hover:border-violet-200">Confirmar agendamento</button>
                         <a href="{{ route('academic.student.mine') }}" class="rounded-xl border border-zinc-700 px-4 py-2 text-3xl font-semibold">Cancelar</a>
                     </div>
                     <p class="mt-3 border-l border-zinc-700 pl-3 text-sm italic text-zinc-400">Sistema verifica conflito antes de confirmar. Se horário já foi tomado, exibe alerta e recarrega grade.</p>
@@ -121,7 +122,11 @@
 
                 <div data-calendar-days class="mt-3 grid grid-cols-7 gap-2"></div>
 
-                <p class="mt-4 text-sm text-zinc-400">Somente datas com horários livres no sistema podem ser selecionadas.</p>
+                <p class="mt-4 text-sm text-zinc-400">Somente datas com horários disponíveis para agendamento podem ser selecionadas.</p>
+                <p class="mt-1 text-xs text-zinc-500">Passe o cursor sobre dias indisponíveis para ver o motivo do bloqueio.</p>
+                <p data-calendar-day-reason class="mt-2 min-h-10 rounded-lg border border-violet-500/30 bg-violet-500/15 px-3 py-2 text-sm font-medium text-violet-100">
+                    Clique em um dia para visualizar o motivo de indisponibilidade.
+                </p>
 
                 <div class="mt-5 flex justify-end border-t border-zinc-800 pt-4">
                     <button type="button" data-close-calendar class="rounded-xl border border-zinc-700 px-5 py-2 text-xl font-semibold text-white hover:border-violet-400">Fechar</button>
@@ -152,6 +157,7 @@
             const calendarModal = document.querySelector('[data-system-calendar-modal]');
             const closeCalendarButtons = document.querySelectorAll('[data-close-calendar]');
             const calendarDaysContainer = document.querySelector('[data-calendar-days]');
+            const calendarDayReason = document.querySelector('[data-calendar-day-reason]');
             const slotsByDatePayload = document.getElementById('slots-by-date-data')?.textContent || '{}';
             const slotsByDateAttendantPayload = document.getElementById('slots-by-date-attendant-data')?.textContent || '{}';
             const calendarDaysAttendantPayload = document.getElementById('calendar-days-attendant-data')?.textContent || '{}';
@@ -267,14 +273,19 @@
 
                 calendarDays.forEach((day) => {
                     const button = document.createElement('button');
-                    const isEnabled = Boolean(day.hasAvailability && day.isSystemDay);
+                    const isSelectable = Boolean(day.hasAvailability && day.isSystemDay);
 
                     button.type = 'button';
                     button.dataset.calendarDay = '';
                     button.dataset.date = day.date;
-                    button.disabled = !isEnabled;
-                    button.className = `rounded-lg border px-2 py-2 text-sm ${isEnabled ? 'border-zinc-700 text-zinc-200 hover:border-violet-400' : 'border-zinc-800 text-zinc-600 cursor-not-allowed'} ${day.isSelected ? 'ring-2 ring-violet-400 border-violet-400 bg-violet-500/20 text-violet-200' : ''} ${day.isToday ? 'font-semibold' : ''}`;
+                    button.dataset.selectable = isSelectable ? '1' : '0';
+                    button.dataset.reason = day.unavailability_reason || '';
+                    button.className = `rounded-lg border px-2 py-2 text-sm transition ${isSelectable ? 'border-zinc-700 text-zinc-200 hover:border-violet-400' : 'border-zinc-800 text-zinc-600 cursor-not-allowed'} ${day.isSelected ? 'ring-2 ring-violet-400 border-violet-400 bg-violet-500/20 text-violet-200' : ''} ${day.isToday ? 'font-semibold' : ''}`;
                     button.textContent = day.day;
+
+                    if (!isSelectable && day.unavailability_reason) {
+                        button.title = day.unavailability_reason;
+                    }
 
                     calendarDaysContainer.appendChild(button);
                 });
@@ -389,13 +400,36 @@
                 if (!(target instanceof HTMLElement) || !dateInput) return;
 
                 const button = target.closest('[data-calendar-day]');
-                if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+                if (!(button instanceof HTMLButtonElement)) return;
+
+                calendarDaysContainer.querySelectorAll('[data-calendar-day]').forEach((item) => {
+                    item.classList.remove('ring-2', 'ring-violet-400', 'border-violet-400', 'bg-violet-500/20', 'text-violet-200');
+                });
+
+                button.classList.add('ring-2', 'ring-violet-400', 'border-violet-400', 'bg-violet-500/20', 'text-violet-200');
+
+                const isSelectable = button.dataset.selectable === '1';
+                const reason = (button.dataset.reason || '').trim();
+
+                if (!isSelectable) {
+                    if (calendarDayReason) {
+                        calendarDayReason.textContent = reason !== ''
+                            ? `Motivo do bloqueio: ${reason}`
+                            : 'Indisponível por regra do calendário do sistema.';
+                    }
+
+                    return;
+                }
 
                 dateInput.value = button.dataset.date || dateInput.value;
                 calendarDays = calendarDays.map((day) => ({
                     ...day,
                     isSelected: day.date === dateInput.value,
                 }));
+
+                if (calendarDayReason) {
+                    calendarDayReason.textContent = 'Data selecionada. Escolha um horário disponível para continuar.';
+                }
 
                 renderCalendarDays();
                 updateDateVisualFeedback();
