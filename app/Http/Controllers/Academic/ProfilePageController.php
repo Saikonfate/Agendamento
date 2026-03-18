@@ -76,11 +76,20 @@ class ProfilePageController extends Controller
 
     public function professor(Request $request): View
     {
+        $user = $request->user();
         $professorName = (string) ($request->user()?->name ?? '');
         $aliases = $this->professorAliases($professorName);
 
         $query = Appointment::query()->latest('updated_at');
-        if (! empty($aliases)) {
+        if ($user?->id) {
+            $query->where(function ($innerQuery) use ($aliases, $user) {
+                $innerQuery->where('attendant_user_id', $user->id);
+
+                if (! empty($aliases)) {
+                    $innerQuery->orWhereIn('attendant_name', $aliases);
+                }
+            });
+        } elseif (! empty($aliases)) {
             $query->whereIn('attendant_name', $aliases);
         } else {
             $query->whereRaw('1 = 0');

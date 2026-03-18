@@ -8,6 +8,7 @@ use App\Models\AttendantSchedule;
 use App\Models\BlockedDate;
 use App\Models\Notice;
 use App\Models\User;
+use App\Services\SchedulingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -16,6 +17,10 @@ use Illuminate\View\View;
 
 class StudentAppointmentController extends Controller
 {
+    public function __construct(
+        private SchedulingService $scheduling,
+    ) {}
+
     public function dashboard(Request $request): View
     {
         $user = $request->user();
@@ -174,11 +179,13 @@ class StudentAppointmentController extends Controller
             ]);
         }
 
-        $conflict = Appointment::query()
-            ->where('attendant_name', $validated['attendant_name'])
-            ->where('scheduled_at', $scheduledAt)
-            ->whereIn('status', ['Confirmado', 'Pendente'])
-            ->exists();
+        $attendantIdentity = $this->scheduling->resolveAttendant($validated['attendant_name']);
+
+        $conflict = $this->scheduling->hasActiveConflict(
+            $scheduledAt,
+            $validated['attendant_name'],
+            $attendantIdentity['user_id'],
+        );
 
         if ($conflict) {
             return back()->withInput()->withErrors([
@@ -190,6 +197,7 @@ class StudentAppointmentController extends Controller
             'student_name' => $user->name,
             'student_registration' => $registration,
             'attendant_name' => $validated['attendant_name'],
+            'attendant_user_id' => $attendantIdentity['user_id'],
             'subject' => $validated['subject'],
             'scheduled_at' => $scheduledAt,
             'status' => 'Pendente',
@@ -255,33 +263,7 @@ class StudentAppointmentController extends Controller
 
     private function buildSlotsForDate(Carbon $date, ?string $attendantFilter = null): array
     {
-        $slots = $this->systemWorkingSlots($date, $attendantFilter);
-
-        if (! $this->isSystemWorkingDay($date, $attendantFilter) || $this->isDateBlocked($date, $attendantFilter)) {
-            return collect($slots)
-                ->map(fn (string $slot) => [
-                    'time' => $slot,
-                    'available' => false,
-                ])
-                ->all();
-        }
-
-        $query = Appointment::query()
-            ->whereDate('scheduled_at', $date)
-            ->whereIn('status', ['Confirmado', 'Pendente']);
-
-        if ($attendantFilter) {
-            $query->where('attendant_name', $attendantFilter);
-        }
-
-        $occupied = $query->get()->pluck('scheduled_at')->map(fn ($dateTime) => Carbon::parse($dateTime)->format('H:i'))->all();
-
-        return collect($slots)
-            ->map(fn (string $slot) => [
-                'time' => $slot,
-                'available' => ! in_array($slot, $occupied, true),
-            ])
-            ->all();
+        return $this->scheduling->buildSlotsForDate($date, $attendantFilter);
     }
 
     private function availableSlotsCountForDate(Carbon $date, ?string $attendantFilter = null): int
@@ -293,53 +275,14 @@ class StudentAppointmentController extends Controller
 
     private function systemWorkingSlots(Carbon $date, ?string $attendantName = null): array
     {
-        $schedule = $this->resolveScheduleForDate($attendantName, $date);
-        $start = Carbon::createFromFormat('H:i', $schedule['start_time']);
-        $end = Carbon::createFromFormat('H:i', $schedule['end_time']);
-        $duration = (int) $schedule['slot_duration_minutes'];
-
-        $breakStart = $schedule['break_start'] ? Carbon::createFromFormat('H:i', $schedule['break_start']) : null;
-        $breakEnd = $schedule['break_end'] ? Carbon::createFromFormat('H:i', $schedule['break_end']) : null;
-
-        $slots = [];
-        $cursor = $start->copy();
-
-        while ($cursor->copy()->addMinutes($duration)->lessThanOrEqualTo($end)) {
-            $slotStart = $cursor->copy();
-            $slotEnd = $cursor->copy()->addMinutes($duration);
-
-            $insideBreak = $breakStart && $breakEnd
-                ? $slotStart->lessThan($breakEnd) && $slotEnd->greaterThan($breakStart)
-                : false;
-
-            if (! $insideBreak) {
-                $slots[] = $slotStart->format('H:i');
-            }
-
-            $cursor->addMinutes($duration);
-        }
-
-        return $slots;
+        return collect($this->scheduling->buildSlotsForDate($date, $attendantName))
+            ->pluck('time')
+            ->all();
     }
 
     private function isSystemWorkingDay(Carbon $date, ?string $attendantName = null): bool
     {
-        if ($date->isWeekend()) {
-            return false;
-        }
-
-        $schedule = $this->resolveScheduleForDate($attendantName, $date);
-        $dayMap = [
-            1 => 'mon',
-            2 => 'tue',
-            3 => 'wed',
-            4 => 'thu',
-            5 => 'fri',
-        ];
-
-        $weekday = $dayMap[(int) $date->isoWeekday()] ?? null;
-
-        return $weekday ? in_array($weekday, $schedule['working_days'], true) : false;
+        return $this->scheduling->isSystemWorkingDay($date, $attendantName);
     }
 
     /**
@@ -347,53 +290,12 @@ class StudentAppointmentController extends Controller
      */
     private function resolveScheduleForDate(?string $attendantName, Carbon $date): array
     {
-        $schedule = $this->resolveSchedule($attendantName);
-
-        $dayMap = [
-            1 => 'mon',
-            2 => 'tue',
-            3 => 'wed',
-            4 => 'thu',
-            5 => 'fri',
-        ];
-
-        $dayKey = $dayMap[(int) $date->isoWeekday()] ?? null;
-        if (! $dayKey) {
-            return $schedule;
-        }
-
-        $daySettings = $schedule['day_settings'] ?? [];
-        $config = is_array($daySettings[$dayKey] ?? null) ? $daySettings[$dayKey] : null;
-
-        if (! is_array($config)) {
-            return $schedule;
-        }
-
-        $enabled = (bool) ($config['enabled'] ?? false);
-
-        return [
-            'working_days' => $enabled ? [$dayKey] : [],
-            'start_time' => (string) ($config['start_time'] ?? $schedule['start_time']),
-            'end_time' => (string) ($config['end_time'] ?? $schedule['end_time']),
-            'break_start' => ($config['break_start'] ?? '') !== '' ? (string) $config['break_start'] : null,
-            'break_end' => ($config['break_end'] ?? '') !== '' ? (string) $config['break_end'] : null,
-            'slot_duration_minutes' => (int) $schedule['slot_duration_minutes'],
-        ];
+        return $this->scheduling->resolveScheduleForDate($date, $attendantName);
     }
 
     private function isDateBlocked(Carbon $date, ?string $attendantName = null): bool
     {
-        $query = BlockedDate::query()
-            ->whereDate('blocked_date', $date->toDateString())
-            ->where(function ($innerQuery) use ($attendantName) {
-                $innerQuery->whereNull('attendant_name');
-
-                if ($attendantName) {
-                    $innerQuery->orWhere('attendant_name', $attendantName);
-                }
-            });
-
-        return $query->exists();
+        return $this->scheduling->isDateBlocked($date, $attendantName);
     }
 
     private function resolveSchedule(?string $attendantName = null): array

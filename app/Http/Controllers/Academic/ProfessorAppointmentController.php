@@ -5,18 +5,26 @@ namespace App\Http\Controllers\Academic;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\User;
+use App\Services\SchedulingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class ProfessorAppointmentController extends Controller
 {
+    public function __construct(
+        private SchedulingService $scheduling,
+    ) {}
+
     public function updateStatus(Request $request, Appointment $appointment): RedirectResponse
     {
         /** @var User|null $user */
         $user = $request->user();
         $aliases = $this->professorAliases((string) ($user?->name ?? ''));
 
-        if (! in_array($appointment->attendant_name, $aliases, true)) {
+        $belongsToProfessor = ($user?->id !== null && $appointment->attendant_user_id === $user->id)
+            || in_array($appointment->attendant_name, $aliases, true);
+
+        if (! $belongsToProfessor) {
             abort(403);
         }
 
@@ -49,21 +57,6 @@ class ProfessorAppointmentController extends Controller
      */
     private function professorAliases(string $name): array
     {
-        $name = trim($name);
-        if ($name === '') {
-            return [];
-        }
-
-        $baseName = preg_replace('/^(prof\.?|professor)\s+/iu', '', $name) ?: $name;
-        $baseName = trim($baseName);
-
-        $aliases = [
-            $name,
-            $baseName,
-            'Prof. '.$baseName,
-            'Professor '.$baseName,
-        ];
-
-        return array_values(array_unique(array_filter($aliases)));
+        return $this->scheduling->professorAliases($name);
     }
 }

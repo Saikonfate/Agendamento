@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -11,6 +12,7 @@ use Illuminate\Support\Carbon;
  * @property string $student_name
  * @property string $student_registration
  * @property string $attendant_name
+ * @property int|null $attendant_user_id
  * @property string $subject
  * @property Carbon $scheduled_at
  * @property string $status
@@ -26,6 +28,7 @@ class Appointment extends Model
         'student_name',
         'student_registration',
         'attendant_name',
+        'attendant_user_id',
         'subject',
         'scheduled_at',
         'status',
@@ -37,5 +40,10 @@ class Appointment extends Model
         return [
             'scheduled_at' => 'datetime',
         ];
+    }
+
+    public function attendantUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'attendant_user_id');
     }
 }

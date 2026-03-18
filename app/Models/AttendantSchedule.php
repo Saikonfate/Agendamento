@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -11,6 +12,7 @@ class AttendantSchedule extends Model
 
     protected $fillable = [
         'attendant_name',
+        'attendant_user_id',
         'working_days',
         'day_settings',
         'start_time',
@@ -26,5 +28,10 @@ class AttendantSchedule extends Model
             'working_days' => 'array',
             'day_settings' => 'array',
         ];
+    }
+
+    public function attendantUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'attendant_user_id');
     }
 }

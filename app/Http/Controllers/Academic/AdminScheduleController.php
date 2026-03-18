@@ -7,6 +7,7 @@ use App\Models\Appointment;
 use App\Models\AttendantSchedule;
 use App\Models\BlockedDate;
 use App\Models\User;
+use App\Services\SchedulingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -16,6 +17,10 @@ use Illuminate\View\View;
 class AdminScheduleController extends Controller
 {
     private const ALLOWED_WORKING_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'];
+
+    public function __construct(
+        private SchedulingService $scheduling,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -102,9 +107,17 @@ class AdminScheduleController extends Controller
             return back()->withErrors(['working_days' => 'Selecione ao menos um dia útil.'])->withInput();
         }
 
+        $attendantIdentity = $this->scheduling->resolveAttendant($validated['attendant_name']);
+
+        $keys = $attendantIdentity['user_id']
+            ? ['attendant_user_id' => $attendantIdentity['user_id']]
+            : ['attendant_name' => $validated['attendant_name']];
+
         AttendantSchedule::query()->updateOrCreate(
-            ['attendant_name' => $validated['attendant_name']],
+            $keys,
             [
+                'attendant_name' => $validated['attendant_name'],
+                'attendant_user_id' => $attendantIdentity['user_id'],
                 'working_days' => $workingDays,
                 'day_settings' => $daySettings,
                 'start_time' => $firstDayConfig['start_time'],
@@ -136,10 +149,15 @@ class AdminScheduleController extends Controller
             $attendantName = null;
         }
 
+        $attendantIdentity = $attendantName
+            ? $this->scheduling->resolveAttendant($attendantName)
+            : ['user_id' => null];
+
         BlockedDate::query()->updateOrCreate(
             [
                 'blocked_date' => Carbon::parse($validated['blocked_date'])->toDateString(),
                 'attendant_name' => $attendantName,
+                'attendant_user_id' => $attendantIdentity['user_id'],
             ],
             [
                 'reason' => $validated['reason'],

@@ -2,6 +2,7 @@
 
 use App\Models\Appointment;
 use App\Models\AttendantSchedule;
+use App\Models\BlockedDate;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -67,7 +68,7 @@ test('student scheduling respects professor per-day availability', function () {
         'slot_duration_minutes' => 30,
     ]);
 
-    $monday = Carbon::now()->next(Carbon::MONDAY)->format('Y-m-d');
+    $monday = Carbon::now()->next('Monday')->format('Y-m-d');
 
     $invalidResponse = $this->actingAs($student)->post(route('academic.student.store'), [
         'attendant_name' => 'Prof. Ana Lima',
@@ -120,11 +121,11 @@ test('admin reschedule validates professor per-day rules', function () {
         'student_registration' => '20249990002',
         'attendant_name' => 'Prof. Ana Lima',
         'subject' => 'Revisão',
-        'scheduled_at' => Carbon::now()->next(Carbon::MONDAY)->setTime(10, 0),
+        'scheduled_at' => Carbon::now()->next('Monday')->setTime(10, 0),
         'status' => 'Pendente',
     ]);
 
-    $tuesday = Carbon::now()->next(Carbon::TUESDAY)->format('Y-m-d');
+    $tuesday = Carbon::now()->next('Tuesday')->format('Y-m-d');
 
     $invalid = $this->actingAs($admin)->patchJson(route('academic.admin.appointments.reschedule', $appointment), [
         'date' => $tuesday,
@@ -133,7 +134,7 @@ test('admin reschedule validates professor per-day rules', function () {
 
     $invalid->assertStatus(422);
 
-    $monday = Carbon::now()->next(Carbon::MONDAY)->format('Y-m-d');
+    $monday = Carbon::now()->next('Monday')->format('Y-m-d');
 
     $valid = $this->actingAs($admin)->patchJson(route('academic.admin.appointments.reschedule', $appointment), [
         'date' => $monday,
@@ -213,7 +214,7 @@ test('admin per-day availability configuration affects student slot validation',
         'day_settings' => weekdaySettings(['mon'], '14:00', '15:00'),
     ])->assertSessionHasNoErrors();
 
-    $monday = Carbon::now()->next(Carbon::MONDAY)->format('Y-m-d');
+    $monday = Carbon::now()->next('Monday')->format('Y-m-d');
 
     $invalid = $this->actingAs($student)->post(route('academic.student.store'), [
         'attendant_name' => 'Prof. Ana Lima',
@@ -234,6 +235,163 @@ test('admin per-day availability configuration affects student slot validation',
     $valid
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('academic.student.mine'));
+});
+
+test('global blocked date prevents booking for any attendant', function () {
+    /** @var \Tests\TestCase $this */
+    $student = User::factory()->create([
+        'role' => 'student',
+        'matricula' => '20249990005',
+    ]);
+
+    AttendantSchedule::query()->create([
+        'attendant_name' => 'Prof. Ana Lima',
+        'working_days' => ['mon'],
+        'day_settings' => weekdaySettings(['mon'], '10:00', '11:00'),
+        'start_time' => '10:00',
+        'end_time' => '11:00',
+        'break_start' => null,
+        'break_end' => null,
+        'slot_duration_minutes' => 30,
+    ]);
+
+    $monday = Carbon::now()->next('Monday')->toDateString();
+
+    BlockedDate::query()->create([
+        'blocked_date' => $monday,
+        'reason' => 'Feriado institucional',
+        'attendant_name' => null,
+    ]);
+
+    $response = $this->actingAs($student)->post(route('academic.student.store'), [
+        'attendant_name' => 'Prof. Ana Lima',
+        'subject' => 'Atendimento em feriado',
+        'date' => $monday,
+        'time' => '10:00',
+    ]);
+
+    $response->assertSessionHasErrors('time');
+});
+
+test('attendant specific blocked date does not block other attendants', function () {
+    /** @var \Tests\TestCase $this */
+    $professorA = User::factory()->create([
+        'role' => 'professor',
+        'name' => 'Ana Lima',
+        'email' => 'prof.ana.bloqueio@unifap.edu.br',
+    ]);
+
+    $professorB = User::factory()->create([
+        'role' => 'professor',
+        'name' => 'Bruno Costa',
+        'email' => 'prof.bruno.bloqueio@unifap.edu.br',
+    ]);
+
+    $student = User::factory()->create([
+        'role' => 'student',
+        'matricula' => '20249990006',
+    ]);
+
+    AttendantSchedule::query()->create([
+        'attendant_name' => 'Prof. Ana Lima',
+        'attendant_user_id' => $professorA->id,
+        'working_days' => ['mon'],
+        'day_settings' => weekdaySettings(['mon'], '10:00', '11:00'),
+        'start_time' => '10:00',
+        'end_time' => '11:00',
+        'break_start' => null,
+        'break_end' => null,
+        'slot_duration_minutes' => 30,
+    ]);
+
+    AttendantSchedule::query()->create([
+        'attendant_name' => 'Prof. Bruno Costa',
+        'attendant_user_id' => $professorB->id,
+        'working_days' => ['mon'],
+        'day_settings' => weekdaySettings(['mon'], '10:00', '11:00'),
+        'start_time' => '10:00',
+        'end_time' => '11:00',
+        'break_start' => null,
+        'break_end' => null,
+        'slot_duration_minutes' => 30,
+    ]);
+
+    $monday = Carbon::now()->next('Monday')->toDateString();
+
+    BlockedDate::query()->create([
+        'blocked_date' => $monday,
+        'reason' => 'Reunião departamental',
+        'attendant_name' => 'Prof. Ana Lima',
+        'attendant_user_id' => $professorA->id,
+    ]);
+
+    $blockedAttempt = $this->actingAs($student)->post(route('academic.student.store'), [
+        'attendant_name' => 'Prof. Ana Lima',
+        'subject' => 'Tentativa bloqueada',
+        'date' => $monday,
+        'time' => '10:00',
+    ]);
+
+    $blockedAttempt->assertSessionHasErrors('time');
+
+    $allowedAttempt = $this->actingAs($student)->post(route('academic.student.store'), [
+        'attendant_name' => 'Prof. Bruno Costa',
+        'subject' => 'Tentativa permitida',
+        'date' => $monday,
+        'time' => '10:00',
+    ]);
+
+    $allowedAttempt
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('academic.student.mine'));
+});
+
+test('slot competition keeps only first active booking', function () {
+    /** @var \Tests\TestCase $this */
+    $studentA = User::factory()->create([
+        'role' => 'student',
+        'matricula' => '20249990007',
+    ]);
+
+    $studentB = User::factory()->create([
+        'role' => 'student',
+        'matricula' => '20249990008',
+    ]);
+
+    AttendantSchedule::query()->create([
+        'attendant_name' => 'Prof. Ana Lima',
+        'working_days' => ['mon'],
+        'day_settings' => weekdaySettings(['mon'], '10:00', '11:00'),
+        'start_time' => '10:00',
+        'end_time' => '11:00',
+        'break_start' => null,
+        'break_end' => null,
+        'slot_duration_minutes' => 30,
+    ]);
+
+    $monday = Carbon::now()->next('Monday')->toDateString();
+
+    $first = $this->actingAs($studentA)->post(route('academic.student.store'), [
+        'attendant_name' => 'Prof. Ana Lima',
+        'subject' => 'Primeiro agendamento',
+        'date' => $monday,
+        'time' => '10:00',
+    ]);
+
+    $first
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('academic.student.mine'));
+
+    $second = $this->actingAs($studentB)->post(route('academic.student.store'), [
+        'attendant_name' => 'Prof. Ana Lima',
+        'subject' => 'Segundo agendamento',
+        'date' => $monday,
+        'time' => '10:00',
+    ]);
+
+    $second->assertSessionHasErrors('time');
+
+    $this->assertDatabaseCount('appointments', 1);
 });
 
 test('professor can reject appointment with reason', function () {

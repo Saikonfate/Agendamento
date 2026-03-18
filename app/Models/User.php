@@ -10,6 +10,17 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string|null $matricula
+ * @property string $role
+ * @property string $email
+ * @property string|null $personal_email
+ * @property string|null $profile_photo_path
+ * @property string $password
+ * @property bool $must_change_password
+ */
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */

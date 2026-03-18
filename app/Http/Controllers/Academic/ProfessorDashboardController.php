@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Academic;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\AttendantSchedule;
+use App\Services\SchedulingService;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -15,17 +16,29 @@ class ProfessorDashboardController extends Controller
 {
     private const ALLOWED_WORKING_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'];
 
+    public function __construct(
+        private SchedulingService $scheduling,
+    ) {}
+
     public function __invoke(Request $request): View
     {
         /** @var User|null $user */
         $user = $request->user();
         $aliases = $this->professorAliases((string) ($user?->name ?? ''));
-        $primaryAlias = $this->primaryAlias((string) ($user?->name ?? ''));
+        $primaryAlias = $this->scheduling->canonicalProfessorName((string) ($user?->name ?? ''));
 
         $today = Carbon::today();
 
         $baseQuery = Appointment::query();
-        if (! empty($aliases)) {
+        if ($user?->id) {
+            $baseQuery->where(function ($query) use ($aliases, $user) {
+                $query->where('attendant_user_id', $user->id);
+
+                if (! empty($aliases)) {
+                    $query->orWhereIn('attendant_name', $aliases);
+                }
+            });
+        } elseif (! empty($aliases)) {
             $baseQuery->whereIn('attendant_name', $aliases);
         } else {
             $baseQuery->whereRaw('1 = 0');
@@ -62,8 +75,17 @@ class ProfessorDashboardController extends Controller
         ];
 
         $scheduleModel = AttendantSchedule::query()
-            ->where('attendant_name', $primaryAlias)
-            ->orWhereIn('attendant_name', $aliases)
+            ->where(function ($query) use ($primaryAlias, $aliases, $user) {
+                if ($user?->id) {
+                    $query->where('attendant_user_id', $user->id);
+                }
+
+                $query->orWhere('attendant_name', $primaryAlias);
+
+                if (! empty($aliases)) {
+                    $query->orWhereIn('attendant_name', $aliases);
+                }
+            })
             ->first();
 
         $schedule = $scheduleModel ? [
@@ -139,27 +161,23 @@ class ProfessorDashboardController extends Controller
             return back()->withErrors(['working_days' => 'Selecione ao menos um dia útil.'])->withInput();
         }
 
-        foreach ($aliases as $alias) {
+        $primaryAlias = $this->scheduling->canonicalProfessorName((string) ($user?->name ?? ''));
+
+        if ($user?->id) {
             AttendantSchedule::query()->updateOrCreate(
-                ['attendant_name' => $alias],
-                $payload,
+                ['attendant_user_id' => $user->id],
+                $payload + ['attendant_name' => $primaryAlias],
             );
-        }
-
-        return back()->with('status', 'Disponibilidade salva com sucesso.');
-    }
-
-    private function primaryAlias(string $name): string
-    {
-        $aliases = $this->professorAliases($name);
-
-        foreach ($aliases as $alias) {
-            if (str_starts_with($alias, 'Prof. ')) {
-                return $alias;
+        } else {
+            foreach ($aliases as $alias) {
+                AttendantSchedule::query()->updateOrCreate(
+                    ['attendant_name' => $alias],
+                    $payload,
+                );
             }
         }
 
-        return (string) ($aliases[0] ?? $name);
+        return back()->with('status', 'Disponibilidade salva com sucesso.');
     }
 
     /**
@@ -167,22 +185,7 @@ class ProfessorDashboardController extends Controller
      */
     private function professorAliases(string $name): array
     {
-        $name = trim($name);
-        if ($name === '') {
-            return [];
-        }
-
-        $baseName = preg_replace('/^(prof\.?|professor)\s+/iu', '', $name) ?: $name;
-        $baseName = trim($baseName);
-
-        $aliases = [
-            $name,
-            $baseName,
-            'Prof. '.$baseName,
-            'Professor '.$baseName,
-        ];
-
-        return array_values(array_unique(array_filter($aliases)));
+        return $this->scheduling->professorAliases($name);
     }
 
     /**
