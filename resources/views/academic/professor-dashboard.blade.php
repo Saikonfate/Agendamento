@@ -141,7 +141,7 @@
                         @forelse ($appointments as $appointment)
                             <tr>
                                 <td class="px-3 py-3 text-zinc-300">{{ $appointment->scheduled_at->locale('pt_BR')->translatedFormat('d/m/Y') }}</td>
-                                <td class="px-3 py-3 font-semibold text-violet-200">{{ $appointment->scheduled_at->format('H:i') }}</td>
+                                <td class="px-3 py-3 font-semibold text-zinc-100">{{ $appointment->scheduled_at->format('H:i') }}</td>
                                 <td class="px-3 py-3 text-zinc-200">{{ $appointment->student_name }}</td>
                                 <td class="px-3 py-3 text-zinc-400">{{ $appointment->student_registration }}</td>
                                 <td class="px-3 py-3 text-zinc-200">{{ $appointment->subject }}</td>

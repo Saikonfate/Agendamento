@@ -48,7 +48,7 @@
                         @forelse ($appointments as $appointment)
                             <tr>
                                 <td class="px-4 py-3">{{ $appointment->scheduled_at->format('d/m/Y') }}</td>
-                                <td class="px-4 py-3">{{ $appointment->scheduled_at->format('H:i') }}</td>
+                                <td class="px-4 py-3 font-semibold text-zinc-100">{{ $appointment->scheduled_at->format('H:i') }}</td>
                                 <td class="px-4 py-3">{{ $appointment->subject }}</td>
                                 <td class="px-4 py-3">{{ $appointment->attendant_display_name }}</td>
                                 <td class="px-4 py-3">

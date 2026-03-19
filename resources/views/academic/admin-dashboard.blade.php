@@ -127,7 +127,7 @@
                         <tbody class="divide-y divide-zinc-800">
                             @forelse ($initialAppointments as $appointment)
                                 <tr data-appointment-row data-row-current-status="{{ strtolower($appointment['status']) }}" data-row-attendant="{{ strtolower($appointment['attendant']) }}">
-                                    <td data-row-time class="px-3 py-3 text-xl font-semibold text-violet-100">{{ $appointment['time'] }}</td>
+                                    <td data-row-time class="px-3 py-3 text-xl font-semibold text-zinc-100">{{ $appointment['time'] }}</td>
                                     <td class="px-3 py-3">
                                         <p class="font-semibold text-white">{{ $appointment['student'] }}</p>
                                         <p class="text-sm text-zinc-400">{{ $appointment['registration'] }}</p>
@@ -217,13 +217,13 @@
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <div class="flex items-center justify-between gap-2">
                         <h3 class="text-3xl font-semibold">Avisos</h3>
-                        <button type="button" data-open-notices-manager class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-white hover:border-violet-400">
+                        <button type="button" data-open-notices-manager class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-100 hover:border-violet-400">
                             Gerenciar avisos
                         </button>
                     </div>
                     <div data-notices-list class="mt-4 space-y-3 text-sm">
                         @foreach ($initialNotices as $notice)
-                            <div data-notice-item data-notice-id="{{ $notice['id'] }}" data-tone="{{ $notice['tone'] }}" class="{{ $notice['tone'] === 'amber' ? 'rounded-lg border-l-2 border-amber-400 bg-amber-500/10 px-3 py-2 text-amber-300' : 'rounded-lg border-l-2 border-violet-400 bg-violet-500/20 px-3 py-2 text-violet-100' }}">
+                            <div data-notice-item data-notice-id="{{ $notice['id'] }}" data-tone="{{ $notice['tone'] }}" class="{{ $notice['tone'] === 'amber' ? 'rounded-lg border-l-2 border-amber-400 bg-amber-500/10 px-3 py-2 text-amber-300' : 'rounded-lg border-l-2 border-violet-400 bg-violet-500/20 px-3 py-2 text-zinc-200' }}">
                                 {{ $notice['message'] }}
                             </div>
                         @endforeach
@@ -257,7 +257,7 @@
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Horário</span>
-                    <span data-details-time class="font-semibold text-violet-100">—</span>
+                    <span data-details-time class="font-semibold text-zinc-100">—</span>
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Atendente</span>
@@ -305,7 +305,7 @@
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Horário</span>
-                    <span data-attend-time class="font-semibold text-violet-100">—</span>
+                    <span data-attend-time class="font-semibold text-zinc-100">—</span>
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Atendente</span>
@@ -362,7 +362,7 @@
     <div data-notices-modal class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm px-4 py-6">
         <div class="w-full max-w-2xl rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
             <div class="flex items-start justify-between">
-                <h3 class="text-3xl font-semibold text-white">Gerenciar avisos</h3>
+                <h3 class="text-3xl font-semibold text-zinc-100">Gerenciar avisos</h3>
                 <button type="button" data-close-notices-modal class="text-zinc-400 hover:text-white">✕</button>
             </div>
 
@@ -376,8 +376,8 @@
                     <input data-notice-message-input type="text" placeholder="Digite o texto do aviso" class="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200">
                 </div>
                 <div class="mt-3 flex flex-wrap justify-end gap-2">
-                    <button type="button" data-clear-notice-form class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-white hover:border-violet-400">Limpar</button>
-                    <button type="button" data-save-notice class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-white hover:border-violet-400">Salvar aviso</button>
+                    <button type="button" data-clear-notice-form class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-100 hover:border-violet-400">Limpar</button>
+                    <button type="button" data-save-notice class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-100 hover:border-violet-400">Salvar aviso</button>
                 </div>
             </div>
 
@@ -387,7 +387,7 @@
             </div>
 
             <div class="mt-5 flex justify-end border-t border-zinc-800 pt-4">
-                <button type="button" data-close-notices-modal class="rounded-xl border border-zinc-700 px-5 py-2 text-xl font-semibold text-white hover:border-violet-400">Fechar</button>
+                <button type="button" data-close-notices-modal class="rounded-xl border border-zinc-700 px-5 py-2 text-xl font-semibold text-zinc-100 hover:border-violet-400">Fechar</button>
             </div>
         </div>
     </div>
@@ -476,7 +476,7 @@
                     return 'rounded-lg border-l-2 border-amber-400 bg-amber-500/10 px-3 py-2 text-amber-300';
                 }
 
-                return 'rounded-lg border-l-2 border-violet-400 bg-violet-500/20 px-3 py-2 text-violet-100';
+                return 'rounded-lg border-l-2 border-violet-400 bg-violet-500/20 px-3 py-2 text-zinc-200';
             };
 
             const getNoticeToneLabel = (tone) => {
@@ -721,7 +721,7 @@
                     textWrap.className = 'min-w-0';
 
                     const toneEl = document.createElement('p');
-                    toneEl.className = `text-xs font-semibold ${notice.tone === 'amber' ? 'text-amber-300' : 'text-violet-100'}`;
+                    toneEl.className = `text-xs font-semibold ${notice.tone === 'amber' ? 'text-amber-300' : 'text-violet-300'}`;
                     toneEl.textContent = getNoticeToneLabel(notice.tone);
 
                     const messageEl = document.createElement('p');
@@ -737,13 +737,13 @@
                     const editButton = document.createElement('button');
                     editButton.type = 'button';
                     editButton.dataset.editNotice = String(index);
-                    editButton.className = 'rounded-lg border border-zinc-700 px-2 py-1 text-xs font-semibold text-white hover:border-violet-400';
+                    editButton.className = 'rounded-lg border border-zinc-700 px-2 py-1 text-xs font-semibold text-zinc-100 hover:border-violet-400';
                     editButton.textContent = 'Editar';
 
                     const removeButton = document.createElement('button');
                     removeButton.type = 'button';
                     removeButton.dataset.removeNotice = String(index);
-                    removeButton.className = 'rounded-lg border border-zinc-700 px-2 py-1 text-xs font-semibold text-white hover:border-violet-400';
+                    removeButton.className = 'rounded-lg border border-zinc-700 px-2 py-1 text-xs font-semibold text-zinc-100 hover:border-violet-400';
                     removeButton.textContent = 'Excluir';
 
                     actionsWrap.appendChild(editButton);
