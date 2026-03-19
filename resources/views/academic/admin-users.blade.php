@@ -49,7 +49,7 @@
                             <p class="mt-1 text-xs text-zinc-500">O aluno deverá alterar no primeiro acesso.</p>
                         </div>
                         <div class="flex gap-3 pt-1">
-                            <button type="submit" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 text-xl font-semibold text-white hover:bg-violet-500/40 hover:border-violet-200">Cadastrar aluno</button>
+                            <button type="submit" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 text-xl font-semibold text-white hover:bg-violet-500/40 hover:border-violet-300">Cadastrar aluno</button>
                             <button type="reset" class="rounded-xl border border-zinc-600 bg-zinc-800/70 px-4 py-2 text-xl font-semibold text-zinc-100 hover:border-zinc-500 hover:bg-zinc-700/70">Limpar</button>
                         </div>
                     </form>
@@ -76,7 +76,7 @@
                             <input type="text" value="123456" disabled class="w-full cursor-not-allowed rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-500" />
                         </div>
                         <div class="flex gap-3 pt-1">
-                            <button type="submit" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 text-xl font-semibold text-white hover:bg-violet-500/40 hover:border-violet-200">Cadastrar professor</button>
+                            <button type="submit" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 text-xl font-semibold text-white hover:bg-violet-500/40 hover:border-violet-300">Cadastrar professor</button>
                             <button type="reset" class="rounded-xl border border-zinc-600 bg-zinc-800/70 px-4 py-2 text-xl font-semibold text-zinc-100 hover:border-zinc-500 hover:bg-zinc-700/70">Limpar</button>
                         </div>
                     </form>
@@ -174,7 +174,7 @@
         <div class="w-full max-w-3xl rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
             <div class="flex items-start justify-between">
                 <h3 class="text-3xl font-semibold text-white">Editar aluno</h3>
-                <button type="button" data-close-modal class="text-zinc-400 hover:text-white">✕</button>
+                <button type="button" data-close-modal class="text-zinc-400 hover:text-zinc-200">✕</button>
             </div>
 
             <div class="mt-5 space-y-4">
@@ -199,7 +199,7 @@
             <div class="mt-6 flex flex-wrap gap-2 border-t border-violet-500/20 pt-4">
                 <button type="button" class="rounded-xl border border-rose-400/70 bg-rose-500/20 px-4 py-2 font-semibold text-rose-100 hover:bg-rose-500/30">Excluir cadastro</button>
                 <button type="button" data-close-modal class="rounded-xl border border-zinc-600 bg-zinc-800/70 px-4 py-2 font-semibold text-zinc-100 hover:border-zinc-500 hover:bg-zinc-700/70">Cancelar</button>
-                <button type="button" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 font-semibold text-white hover:bg-violet-500/40 hover:border-violet-200">Salvar alterações</button>
+                <button type="button" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 font-semibold text-white hover:bg-violet-500/40 hover:border-violet-300">Salvar alterações</button>
             </div>
         </div>
     </div>
@@ -208,7 +208,7 @@
         <div class="w-full max-w-3xl rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
             <div class="flex items-start justify-between">
                 <h3 class="text-3xl font-semibold text-white">Editar professor</h3>
-                <button type="button" data-close-modal class="text-zinc-400 hover:text-white">✕</button>
+                <button type="button" data-close-modal class="text-zinc-400 hover:text-zinc-200">✕</button>
             </div>
 
             <div class="mt-5 space-y-4">
@@ -227,7 +227,7 @@
             <div class="mt-6 flex flex-wrap gap-2 border-t border-violet-500/20 pt-4">
                 <button type="button" class="rounded-xl border border-rose-400/70 bg-rose-500/20 px-4 py-2 font-semibold text-rose-100 hover:bg-rose-500/30">Excluir cadastro</button>
                 <button type="button" data-close-modal class="rounded-xl border border-zinc-600 bg-zinc-800/70 px-4 py-2 font-semibold text-zinc-100 hover:border-zinc-500 hover:bg-zinc-700/70">Cancelar</button>
-                <button type="button" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 font-semibold text-white hover:bg-violet-500/40 hover:border-violet-200">Salvar alterações</button>
+                <button type="button" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 font-semibold text-white hover:bg-violet-500/40 hover:border-violet-300">Salvar alterações</button>
             </div>
         </div>
     </div>

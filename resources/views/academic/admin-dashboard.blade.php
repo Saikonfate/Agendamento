@@ -1,5 +1,5 @@
 @php
-    $title = 'Agenda do dia | Admin';
+    $title = 'Agenda | Admin';
     $role = 'admin';
     $displayName = auth()->user()?->name ?? 'Administrador';
     $initialNotices = ($notices ?? collect())
@@ -61,14 +61,14 @@
     <section class="space-y-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-                <h1 class="text-4xl font-semibold">Agenda do dia</h1>
-                <p class="mt-1 text-zinc-400">{{ $dateLabel ?? now(config('app.timezone'))->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y') }}</p>
+                <h1 class="text-4xl font-semibold">Agenda de atendimentos</h1>
+                <p class="mt-1 text-zinc-400">Período: a partir de {{ $periodStartLabel ?? now(config('app.timezone'))->format('d/m/Y') }}</p>
             </div>
         </div>
 
         <div class="grid gap-3 md:grid-cols-4">
             <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-                <p class="text-zinc-400">Agendados hoje</p>
+                <p class="text-zinc-400">Agendados no período</p>
                 <p data-count-agendados class="mt-2 text-4xl font-bold text-white">{{ $scheduledTotal }}</p>
             </article>
             <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
@@ -88,7 +88,7 @@
         <div class="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
             <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h2 class="text-3xl font-semibold">Agendamentos — Hoje</h2>
+                    <h2 class="text-3xl font-semibold">Agendamentos — Período</h2>
                     <select data-filter-attendant class="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200">
                         <option value="all">Todos os atendentes</option>
                         @foreach ($attendants as $attendant)
@@ -98,7 +98,7 @@
                 </div>
 
                 <div class="mb-4 flex flex-wrap gap-2">
-                    <button type="button" data-filter-button data-filter-status="all" class="rounded-xl border border-violet-300 bg-violet-500/35 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-500/45">
+                    <button type="button" data-filter-button data-filter-status="all" class="rounded-xl border border-violet-300 bg-violet-500/35 px-3 py-1.5 text-sm font-semibold text-zinc-100 hover:bg-violet-500/40">
                         Todos (<span data-filter-count="all">{{ $scheduledTotal }}</span>)
                     </button>
                     <button type="button" data-filter-button data-filter-status="confirmado" class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-100">
@@ -182,7 +182,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-3 py-6 text-center text-zinc-400">Nenhum agendamento para hoje.</td>
+                                    <td colspan="6" class="px-3 py-6 text-center text-zinc-400">Nenhum agendamento encontrado a partir de hoje.</td>
                                 </tr>
                             @endforelse
                             <tr data-filter-empty class="hidden">
@@ -196,7 +196,7 @@
             <div class="space-y-4">
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <h3 class="text-3xl font-semibold">Resumo operacional</h3>
-                    <p class="mt-1 text-sm text-zinc-400">{{ $dateLabel ?? now(config('app.timezone'))->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y') }}</p>
+                    <p class="mt-1 text-sm text-zinc-400">Período: a partir de {{ $periodStartLabel ?? now(config('app.timezone'))->format('d/m/Y') }}</p>
                     <div class="mt-4 grid grid-cols-1 gap-2 text-center text-sm">
                         <div class="flex min-h-24 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
                             <p class="break-words text-zinc-400">Confirmados</p>
@@ -239,7 +239,7 @@
         <div class="w-full max-w-2xl rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
             <div class="flex items-start justify-between">
                 <h3 class="text-3xl font-semibold text-white">Detalhes do atendimento</h3>
-                <button type="button" data-close-details-modal class="text-zinc-400 hover:text-white">✕</button>
+                <button type="button" data-close-details-modal class="text-zinc-400 hover:text-zinc-200">✕</button>
             </div>
 
             <div class="mt-4">
@@ -287,7 +287,7 @@
         <div class="w-full max-w-2xl rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
             <div class="flex items-start justify-between">
                 <h3 class="text-3xl font-semibold text-white">Atender</h3>
-                <button type="button" data-close-attend-modal class="text-zinc-400 hover:text-white">✕</button>
+                <button type="button" data-close-attend-modal class="text-zinc-400 hover:text-zinc-200">✕</button>
             </div>
 
             <div class="mt-4">
@@ -336,7 +336,7 @@
                     <h3 class="text-3xl font-semibold text-white">Reagendar atendimento</h3>
                     <p data-reschedule-subtitle class="mt-1 text-zinc-400">—</p>
                 </div>
-                <button type="button" data-close-reschedule-modal class="text-zinc-400 hover:text-white">✕</button>
+                <button type="button" data-close-reschedule-modal class="text-zinc-400 hover:text-zinc-200">✕</button>
             </div>
 
             <div class="mt-5 space-y-4">
@@ -363,7 +363,7 @@
         <div class="w-full max-w-2xl rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
             <div class="flex items-start justify-between">
                 <h3 class="text-3xl font-semibold text-zinc-100">Gerenciar avisos</h3>
-                <button type="button" data-close-notices-modal class="text-zinc-400 hover:text-white">✕</button>
+                <button type="button" data-close-notices-modal class="text-zinc-400 hover:text-zinc-200">✕</button>
             </div>
 
             <div class="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
@@ -833,12 +833,12 @@
 
             const setFilterButtonState = (button, isActive) => {
                 if (isActive) {
-                    button.classList.add('border-violet-300', 'bg-violet-500/35', 'text-white', 'hover:bg-violet-500/45');
+                    button.classList.add('border-violet-300', 'bg-violet-500/35', 'text-zinc-100', 'hover:bg-violet-500/40');
                     button.classList.remove('border-zinc-700', 'text-zinc-300', 'hover:border-zinc-500', 'hover:bg-zinc-800/70', 'hover:text-zinc-100');
                     return;
                 }
 
-                button.classList.remove('border-violet-300', 'bg-violet-500/35', 'text-white', 'hover:bg-violet-500/45');
+                button.classList.remove('border-violet-300', 'bg-violet-500/35', 'text-zinc-100', 'hover:bg-violet-500/40');
                 button.classList.add('border-zinc-700', 'text-zinc-300', 'hover:border-zinc-500', 'hover:bg-zinc-800/70', 'hover:text-zinc-100');
             };
 

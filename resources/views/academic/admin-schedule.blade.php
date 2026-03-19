@@ -216,7 +216,7 @@
         <div class="w-full max-w-xl rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
             <div class="flex items-start justify-between">
                 <h3 class="text-3xl font-semibold text-white">Bloquear data</h3>
-                <button type="button" data-close-block-date-modal class="text-zinc-400 hover:text-white">✕</button>
+                <button type="button" data-close-block-date-modal class="text-zinc-400 hover:text-zinc-200">✕</button>
             </div>
 
             <form method="POST" action="{{ route('academic.admin.schedule.blocked-dates.store') }}" class="mt-5 space-y-4">

@@ -104,7 +104,7 @@
                         <p><span class="font-semibold">Motivo:</span> {{ old('subject', $subject ?: 'Informe o motivo') }}</p>
                     </div>
                     <div class="mt-5 flex flex-wrap gap-3">
-                        <button type="submit" data-submit-appointment class="rounded-xl border border-violet-300/60 bg-violet-500/20 px-4 py-2 text-3xl font-semibold text-violet-100 hover:border-violet-200">Confirmar agendamento</button>
+                        <button type="submit" data-submit-appointment class="rounded-xl border border-violet-300/60 bg-violet-500/20 px-4 py-2 text-3xl font-semibold text-violet-100 hover:border-violet-300">Confirmar agendamento</button>
                         <a href="{{ route('academic.student.mine') }}" class="rounded-xl border border-zinc-700 px-4 py-2 text-3xl font-semibold">Cancelar</a>
                     </div>
                     <p class="mt-3 border-l border-zinc-700 pl-3 text-sm italic text-zinc-400">Sistema verifica conflito antes de confirmar. Se horário já foi tomado, exibe alerta e recarrega grade.</p>
@@ -119,7 +119,7 @@
                         <h3 class="text-3xl font-semibold text-white">Calendário do sistema</h3>
                         <p class="mt-1 text-zinc-400">{{ \Illuminate\Support\Str::ucfirst($calendarMonthLabel) }}</p>
                     </div>
-                    <button type="button" data-close-calendar class="text-zinc-400 hover:text-white">✕</button>
+                    <button type="button" data-close-calendar class="text-zinc-400 hover:text-zinc-200">✕</button>
                 </div>
 
                 <div class="mt-4 grid grid-cols-7 gap-2 text-center text-sm text-zinc-500">

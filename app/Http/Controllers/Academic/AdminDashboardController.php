@@ -22,7 +22,7 @@ class AdminDashboardController extends Controller
 
         $appointments = Appointment::query()
             ->with('attendantUser:id,name')
-            ->whereDate('scheduled_at', $today)
+            ->whereDate('scheduled_at', '>=', $today)
             ->orderBy('scheduled_at')
             ->get();
 
@@ -57,6 +57,7 @@ class AdminDashboardController extends Controller
             'notices' => $notices,
             'appointments' => $appointments,
             'dateLabel' => $dateLabel,
+            'periodStartLabel' => $today->format('d/m/Y'),
             'scheduledCount' => $scheduledCount,
             'completedCount' => $completedCount,
             'pendingCount' => $pendingCount,

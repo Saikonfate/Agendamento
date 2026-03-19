@@ -113,7 +113,7 @@
         <article class="mt-5 rounded-2xl border border-violet-500/20 bg-zinc-800/80 p-5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 class="text-2xl font-semibold text-zinc-200">Atividade recente</h2>
-                <a href="{{ route('academic.admin.dashboard') }}" class="text-sm font-medium text-violet-300 hover:text-violet-200">Ver agenda do dia →</a>
+                <a href="{{ route('academic.admin.dashboard') }}" class="text-sm font-medium text-violet-300 hover:text-violet-300/90">Ver agenda do dia →</a>
             </div>
 
             <div class="mt-4 divide-y divide-violet-500/10">
