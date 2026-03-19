@@ -47,17 +47,13 @@ class AdminDashboardController extends Controller
                 ))->where('available', true)->count();
             });
 
-        $dateLabel = mb_convert_case(
-            $today->locale('pt_BR')->translatedFormat('l, d \\d\\e F \\d\\e Y'),
-            MB_CASE_TITLE,
-            'UTF-8',
-        );
+        $dateLabel = $today->format('d/m/y');
 
         return view('academic.admin-dashboard', [
             'notices' => $notices,
             'appointments' => $appointments,
             'dateLabel' => $dateLabel,
-            'periodStartLabel' => $today->format('d/m/Y'),
+            'periodStartLabel' => $today->format('d/m/y'),
             'scheduledCount' => $scheduledCount,
             'completedCount' => $completedCount,
             'pendingCount' => $pendingCount,

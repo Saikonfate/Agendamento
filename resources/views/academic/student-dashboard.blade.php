@@ -11,12 +11,12 @@
     $attendants = collect($attendants ?? []);
     $selectedAttendantKey = $selectedAttendantKey ?? '';
     $selectedAttendantName = $selectedAttendantName ?? '';
-    $calendarMonthLabel = $calendarMonthLabel ?? now()->locale('pt_BR')->translatedFormat('M/Y');
+    $calendarMonthLabel = $calendarMonthLabel ?? now()->format('m/y');
     $calendarDays = collect($calendarDays ?? []);
     $upcomingAppointments = collect($upcomingAppointments ?? []);
     $notices = collect($notices ?? []);
     $availableSlotsToday = collect($availableSlotsToday ?? []);
-    $todayLabel = $todayLabel ?? now()->format('d/m/Y');
+    $todayLabel = $todayLabel ?? now()->format('d/m/y');
     $slotsReferenceDateLabel = $slotsReferenceDateLabel ?? $todayLabel;
     $isSlotsReferenceToday = (bool) ($isSlotsReferenceToday ?? true);
     $newAppointmentParams = ['date' => now()->toDateString()];
@@ -109,15 +109,15 @@
                                 $todayClass = '';
 
                                 if ($day['isToday']) {
-                                    $statusClass = 'text-violet-200';
-                                    $todayClass = 'border border-violet-400 ring-1 ring-violet-400 bg-violet-500/25 font-semibold';
+                                    $statusClass = 'text-violet-300';
+                                    $todayClass = 'border border-violet-400 ring-1 ring-violet-300 bg-violet-500/15 font-semibold';
                                 }
                             @endphp
 
                             <button
                                 type="button"
                                 data-calendar-day
-                                data-day-label="{{ sprintf('%02d', (int) $day['day']) }}/{{ now()->format('m') }}"
+                                data-day-label="{{ sprintf('%02d', (int) $day['day']) }}/{{ now()->format('m') }}/{{ now()->format('y') }}"
                                 data-day-status="{{ $day['status'] }}"
                                 data-day-reason="{{ $day['unavailability_reason'] ?? '' }}"
                                 title="{{ $day['unavailability_reason'] ?? '' }}"
@@ -125,7 +125,7 @@
                             >{{ $day['day'] }}</button>
                         @endforeach
                     </div>
-                    <p data-calendar-day-reason class="mt-2 min-h-10 rounded-lg border border-violet-300/70 bg-violet-500/30 px-3 py-2 text-sm font-semibold text-white">
+                    <p data-calendar-day-reason class="mt-2 min-h-10 rounded-lg border border-violet-300/70 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-zinc-100">
                         Clique em um dia para visualizar o motivo de indisponibilidade.
                     </p>
                     @if ($selectedAttendantName === '')
@@ -193,10 +193,10 @@
             dayButtons.forEach((button) => {
                 button.addEventListener('click', () => {
                     dayButtons.forEach((otherButton) => {
-                        otherButton.classList.remove('ring-2', 'ring-violet-400', 'border', 'border-violet-400', 'bg-violet-500/20');
+                        otherButton.classList.remove('ring-2', 'ring-violet-300', 'border', 'border-violet-400', 'bg-violet-500/15');
                     });
 
-                    button.classList.add('ring-2', 'ring-violet-400', 'border', 'border-violet-400', 'bg-violet-500/20');
+                    button.classList.add('ring-2', 'ring-violet-300', 'border', 'border-violet-400', 'bg-violet-500/15');
 
                     const status = button.dataset.dayStatus || '';
                     const reason = (button.dataset.dayReason || '').trim();

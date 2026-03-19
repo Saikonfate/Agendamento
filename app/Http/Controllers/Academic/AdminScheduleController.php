@@ -92,7 +92,7 @@ class AdminScheduleController extends Controller
         $monthStart = $selectedDate->copy()->startOfMonth();
         $daysInMonth = $monthStart->daysInMonth;
 
-        $calendarMonthLabel = ucfirst($monthStart->copy()->locale('pt_BR')->translatedFormat('M/Y'));
+        $calendarMonthLabel = $monthStart->copy()->format('m/y');
 
         $occupationCalendarDays = [];
         $leadingDays = (int) $monthStart->dayOfWeek;
@@ -206,7 +206,7 @@ class AdminScheduleController extends Controller
             'selectedAttendantName' => $selectedAttendantName,
             'schedule' => $normalizedSchedule,
             'selectedDate' => $selectedDate,
-            'selectedDateLabel' => $selectedDate->locale('pt_BR')->translatedFormat('D, d/m'),
+            'selectedDateLabel' => $selectedDate->format('d/m/y'),
             'selectedDateReason' => $selectedDateReason,
             'calendarMonthLabel' => $calendarMonthLabel,
             'occupationCalendarDays' => $occupationCalendarDays,

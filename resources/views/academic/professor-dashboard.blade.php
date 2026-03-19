@@ -8,7 +8,7 @@
     $todayCount = $todayCount ?? $appointments->whereIn('status', ['Confirmado', 'Pendente', 'Realizado'])->count();
     $pendingCount = $pendingCount ?? $appointments->where('status', 'Pendente')->count();
     $completedMonthCount = $completedMonthCount ?? $appointments->where('status', 'Realizado')->count();
-    $todayLabel = $todayLabel ?? now()->format('d/m/Y');
+    $todayLabel = $todayLabel ?? now()->format('d/m/y');
     $attendantAlias = $attendantAlias ?? ($displayName !== '' ? 'Prof. '.$displayName : 'Professor');
     $schedule = $schedule ?? [
         'working_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
@@ -140,7 +140,7 @@
                     <tbody class="divide-y divide-zinc-800">
                         @forelse ($appointments as $appointment)
                             <tr>
-                                <td class="px-3 py-3 text-zinc-300">{{ $appointment->scheduled_at->locale('pt_BR')->translatedFormat('d/m/Y') }}</td>
+                                <td class="px-3 py-3 text-zinc-300">{{ $appointment->scheduled_at->format('d/m/y') }}</td>
                                 <td class="px-3 py-3 font-semibold text-zinc-100">{{ $appointment->scheduled_at->format('H:i') }}</td>
                                 <td class="px-3 py-3 text-zinc-200">{{ $appointment->student_name }}</td>
                                 <td class="px-3 py-3 text-zinc-400">{{ $appointment->student_registration }}</td>

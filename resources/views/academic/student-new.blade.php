@@ -13,15 +13,15 @@
     $slotsByDateByAttendant = $slotsByDateByAttendant ?? [];
     $calendarDays = collect($calendarDays ?? []);
     $calendarDaysByAttendant = $calendarDaysByAttendant ?? [];
-    $calendarMonthLabel = $calendarMonthLabel ?? $selectedDate->locale('pt_BR')->translatedFormat('F/Y');
+    $calendarMonthLabel = $calendarMonthLabel ?? $selectedDate->format('m/y');
     $selectedTime = old('time', $selectedTime ?? '');
     $hasValidSelectedTime = preg_match('/^\d{2}:\d{2}$/', (string) $selectedTime) === 1;
     $selectedTimeLabel = $hasValidSelectedTime
         ? $selectedTime.' - '.\Illuminate\Support\Carbon::createFromFormat('H:i', $selectedTime)->addMinutes(30)->format('H:i')
         : 'Selecione um horário';
     $selectedDateValue = old('date', $selectedDate->format('Y-m-d'));
-    $selectedDateLabel = \Illuminate\Support\Carbon::parse($selectedDateValue)->translatedFormat('d/m/Y');
-    $selectedDateLongLabel = \Illuminate\Support\Carbon::parse($selectedDateValue)->translatedFormat('l, d \d\e F \d\e Y');
+    $selectedDateLabel = \Illuminate\Support\Carbon::parse($selectedDateValue)->format('d/m/y');
+    $selectedDateLongLabel = \Illuminate\Support\Carbon::parse($selectedDateValue)->format('d/m/y');
 @endphp
 
 <x-layouts.academic :title="$title" :role="$role" active="agendar" :userName="$displayName">
@@ -84,7 +84,7 @@
                     <input data-time-input type="hidden" name="time" value="{{ $selectedTime }}" />
                     <div data-slots-grid class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                         @foreach ($slots as $slot)
-                            <button type="button" data-slot-button data-slot-time="{{ $slot['time'] }}" class="rounded-lg border px-3 py-2 {{ $slot['available'] ? 'border-emerald-700 bg-emerald-700/35 text-emerald-300' : 'border-zinc-800 bg-zinc-800 text-zinc-500 line-through cursor-not-allowed' }} {{ $selectedTime === $slot['time'] ? 'ring-2 ring-violet-400 border-violet-400 bg-violet-500/25 text-violet-200' : '' }}" {{ $slot['available'] ? '' : 'disabled' }}>
+                            <button type="button" data-slot-button data-slot-time="{{ $slot['time'] }}" class="rounded-lg border px-3 py-2 {{ $slot['available'] ? 'border-emerald-700 bg-emerald-700/35 text-emerald-300' : 'border-zinc-800 bg-zinc-800 text-zinc-500 line-through cursor-not-allowed' }} {{ $selectedTime === $slot['time'] ? 'ring-2 ring-violet-300 border-violet-400 bg-violet-500/15 text-violet-300' : '' }}" {{ $slot['available'] ? '' : 'disabled' }}>
                                 {{ $slot['time'] }}
                             </button>
                         @endforeach
@@ -220,10 +220,10 @@
                 slotsGrid?.querySelectorAll('[data-slot-button]').forEach((button) => {
                     const isSelected = button.dataset.slotTime === selectedTime;
                     button.classList.toggle('ring-2', isSelected);
-                    button.classList.toggle('ring-violet-400', isSelected);
+                    button.classList.toggle('ring-violet-300', isSelected);
                     button.classList.toggle('border-violet-400', isSelected);
-                    button.classList.toggle('bg-violet-500/25', isSelected);
-                    button.classList.toggle('text-violet-200', isSelected);
+                    button.classList.toggle('bg-violet-500/15', isSelected);
+                    button.classList.toggle('text-violet-300', isSelected);
                 });
 
                 if (!selectedTime) {
@@ -296,7 +296,7 @@
                     button.dataset.date = day.date;
                     button.dataset.selectable = isSelectable ? '1' : '0';
                     button.dataset.reason = day.unavailability_reason || '';
-                    button.className = `rounded-lg border px-2 py-2 text-sm transition ${isSelectable ? 'border-zinc-700 text-zinc-200 hover:border-violet-400' : 'border-zinc-800 text-zinc-600 cursor-not-allowed'} ${day.isSelected ? 'ring-2 ring-violet-400 border-violet-400 bg-violet-500/20 text-violet-200' : ''} ${day.isToday ? 'font-semibold' : ''}`;
+                    button.className = `rounded-lg border px-2 py-2 text-sm transition ${isSelectable ? 'border-zinc-700 text-zinc-200 hover:border-violet-400' : 'border-zinc-800 text-zinc-600 cursor-not-allowed'} ${day.isSelected ? 'ring-2 ring-violet-300 border-violet-400 bg-violet-500/15 text-violet-300' : ''} ${day.isToday ? 'font-semibold' : ''}`;
                     button.textContent = day.day;
 
                     if (!isSelectable && day.unavailability_reason) {
@@ -336,22 +336,21 @@
                 if (Number.isNaN(parsedDate.getTime())) return '';
 
                 const shortDate = new Intl.DateTimeFormat('pt-BR', {
-                    weekday: 'short',
                     day: '2-digit',
                     month: '2-digit',
+                    year: '2-digit',
                 }).format(parsedDate);
 
                 const fullDate = new Intl.DateTimeFormat('pt-BR', {
-                    weekday: 'long',
                     day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
+                    month: '2-digit',
+                    year: '2-digit',
                 }).format(parsedDate);
 
                 const displayDate = new Intl.DateTimeFormat('pt-BR', {
                     day: '2-digit',
                     month: '2-digit',
-                    year: 'numeric',
+                    year: '2-digit',
                 }).format(parsedDate);
 
                 return {
@@ -419,10 +418,10 @@
                 if (!(button instanceof HTMLButtonElement)) return;
 
                 calendarDaysContainer.querySelectorAll('[data-calendar-day]').forEach((item) => {
-                    item.classList.remove('ring-2', 'ring-violet-400', 'border-violet-400', 'bg-violet-500/20', 'text-violet-200');
+                    item.classList.remove('ring-2', 'ring-violet-300', 'border-violet-400', 'bg-violet-500/15', 'text-violet-300');
                 });
 
-                button.classList.add('ring-2', 'ring-violet-400', 'border-violet-400', 'bg-violet-500/20', 'text-violet-200');
+                button.classList.add('ring-2', 'ring-violet-300', 'border-violet-400', 'bg-violet-500/15', 'text-violet-300');
 
                 const isSelectable = button.dataset.selectable === '1';
                 const reason = (button.dataset.reason || '').trim();

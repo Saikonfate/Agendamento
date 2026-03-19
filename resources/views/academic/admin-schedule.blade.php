@@ -18,7 +18,7 @@
     $selectedDate = $selectedDate ?? now(config('app.timezone'));
     $selectedDateLabel = $selectedDateLabel ?? $selectedDate->locale('pt_BR')->translatedFormat('D, d/m');
     $selectedDateReason = $selectedDateReason ?? null;
-    $calendarMonthLabel = $calendarMonthLabel ?? $selectedDate->locale('pt_BR')->translatedFormat('M/Y');
+    $calendarMonthLabel = $calendarMonthLabel ?? $selectedDate->format('m/y');
     $occupationCalendarDays = collect($occupationCalendarDays ?? []);
     $selectedDateSlots = collect($selectedDateSlots ?? []);
 @endphp
@@ -130,7 +130,7 @@
                         @forelse ($blockedDates as $blockedDate)
                             <div class="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2.5">
                                 <div>
-                                    <p class="font-semibold text-white">{{ $blockedDate->blocked_date->format('d/m/Y') }}</p>
+                                    <p class="font-semibold text-white">{{ $blockedDate->blocked_date->format('d/m/y') }}</p>
                                     <p class="text-sm text-zinc-400">{{ $blockedDate->reason }}{{ $blockedDate->attendant_display_name !== '' ? ' · '.$blockedDate->attendant_display_name : ' · Todos os atendentes' }}</p>
                                 </div>
                                 <form method="POST" action="{{ route('academic.admin.schedule.blocked-dates.destroy', $blockedDate) }}">
@@ -169,14 +169,14 @@
 
                             @php
                                 $class = match ($day['status']) {
-                                    'available' => 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
-                                    'partial' => 'border-violet-500/30 bg-violet-500/15 text-violet-200',
-                                    'full' => 'border-rose-500/30 bg-rose-500/15 text-rose-300',
+                                    'available' => 'border-emerald-500/30 bg-emerald-500/15 text-emerald-400',
+                                    'partial' => 'border-violet-500/30 bg-violet-500/15 text-violet-300',
+                                    'full' => 'border-rose-500/30 bg-rose-500/15 text-rose-400',
                                     default => 'border-zinc-800 bg-zinc-800/40 text-zinc-500',
                                 };
                             @endphp
 
-                            <a href="{{ route('academic.admin.schedule', ['attendant' => $selectedAttendantKey, 'date' => $day['date']]) }}" title="{{ $day['reason'] ?? '' }}" class="block rounded-lg border py-2 {{ $class }} {{ ($day['isToday'] ?? false) ? 'ring-1 ring-white/50' : '' }} {{ ($day['isSelected'] ?? false) ? 'ring-2 ring-violet-300' : '' }}">{{ $day['day'] }}</a>
+                            <a href="{{ route('academic.admin.schedule', ['attendant' => $selectedAttendantKey, 'date' => $day['date']]) }}" title="{{ $day['reason'] ?? '' }}" class="block rounded-lg border py-2 {{ $class }} {{ ($day['isToday'] ?? false) ? 'ring-1 ring-zinc-400/50' : '' }} {{ ($day['isSelected'] ?? false) ? 'ring-2 ring-violet-300' : '' }}">{{ $day['day'] }}</a>
                         @endforeach
                     </div>
 
@@ -189,7 +189,7 @@
 
                     @if ($selectedDateReason)
                         <p class="mt-3 rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-300">
-                            Motivo do bloqueio em {{ $selectedDate->format('d/m') }}: {{ $selectedDateReason }}
+                            Motivo do bloqueio em {{ $selectedDate->format('d/m/y') }}: {{ $selectedDateReason }}
                         </p>
                     @endif
                 </article>

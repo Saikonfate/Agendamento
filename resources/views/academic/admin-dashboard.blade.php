@@ -28,7 +28,7 @@
                 'id' => $appointment->id,
                 'time' => $appointment->scheduled_at->format('H:i'),
                 'time_range' => $timeRange,
-                'date_label' => $appointment->scheduled_at->locale('pt_BR')->translatedFormat('D, d \d\e M \d\e Y'),
+                'date_label' => $appointment->scheduled_at->format('d/m/y'),
                 'student' => $appointment->student_name,
                 'registration' => $appointment->student_registration,
                 'attendant' => $appointment->attendant_display_name,
@@ -62,7 +62,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <h1 class="text-4xl font-semibold">Agenda de atendimentos</h1>
-                <p class="mt-1 text-zinc-400">Período: a partir de {{ $periodStartLabel ?? now(config('app.timezone'))->format('d/m/Y') }}</p>
+                <p class="mt-1 text-zinc-400">Período: a partir de {{ $periodStartLabel ?? now(config('app.timezone'))->format('d/m/y') }}</p>
             </div>
         </div>
 
@@ -127,7 +127,10 @@
                         <tbody class="divide-y divide-zinc-800">
                             @forelse ($initialAppointments as $appointment)
                                 <tr data-appointment-row data-row-current-status="{{ strtolower($appointment['status']) }}" data-row-attendant="{{ strtolower($appointment['attendant']) }}">
-                                    <td data-row-time class="px-3 py-3 text-xl font-semibold text-zinc-100">{{ $appointment['time'] }}</td>
+                                    <td data-row-time class="px-3 py-3">
+                                        <p class="text-xl font-semibold text-zinc-100">{{ $appointment['time'] }}</p>
+                                        <p class="text-xs text-zinc-400">{{ $appointment['date_label'] }}</p>
+                                    </td>
                                     <td class="px-3 py-3">
                                         <p class="font-semibold text-white">{{ $appointment['student'] }}</p>
                                         <p class="text-sm text-zinc-400">{{ $appointment['registration'] }}</p>
@@ -196,7 +199,7 @@
             <div class="space-y-4">
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <h3 class="text-3xl font-semibold">Resumo operacional</h3>
-                    <p class="mt-1 text-sm text-zinc-400">Período: a partir de {{ $periodStartLabel ?? now(config('app.timezone'))->format('d/m/Y') }}</p>
+                    <p class="mt-1 text-sm text-zinc-400">Período: a partir de {{ $periodStartLabel ?? now(config('app.timezone'))->format('d/m/y') }}</p>
                     <div class="mt-4 grid grid-cols-1 gap-2 text-center text-sm">
                         <div class="flex min-h-24 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
                             <p class="break-words text-zinc-400">Confirmados</p>

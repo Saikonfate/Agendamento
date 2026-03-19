@@ -64,7 +64,7 @@ class StudentAppointmentController extends Controller
 
         $monthStart = $today->copy()->startOfMonth();
         $daysInMonth = $monthStart->daysInMonth;
-        $calendarMonthLabel = ucfirst($monthStart->copy()->locale('pt_BR')->translatedFormat('M/Y'));
+        $calendarMonthLabel = $monthStart->copy()->format('m/y');
         $blockedDates = BlockedDate::query()
             ->whereBetween('blocked_date', [$monthStart->copy()->startOfMonth(), $monthStart->copy()->endOfMonth()])
             ->get(['blocked_date', 'reason', 'attendant_name', 'attendant_user_id']);
@@ -199,8 +199,8 @@ class StudentAppointmentController extends Controller
             'upcomingAppointments' => $upcomingAppointments,
             'notices' => $notices,
             'availableSlotsToday' => $availableSlotsToday,
-            'todayLabel' => $today->format('d/m/Y'),
-            'slotsReferenceDateLabel' => $slotsReferenceDate->format('d/m/Y'),
+            'todayLabel' => $today->format('d/m/y'),
+            'slotsReferenceDateLabel' => $slotsReferenceDate->format('d/m/y'),
             'isSlotsReferenceToday' => $slotsReferenceDate->isToday(),
         ]);
     }
@@ -373,7 +373,7 @@ class StudentAppointmentController extends Controller
             'slotsByDateByAttendant' => $slotsByDateByAttendant,
             'calendarDays' => $calendarDays,
             'calendarDaysByAttendant' => $calendarDaysByAttendant,
-            'calendarMonthLabel' => $date->copy()->locale('pt_BR')->translatedFormat('F/Y'),
+            'calendarMonthLabel' => $date->copy()->format('m/y'),
             'selectedTime' => $request->string('time')->toString(),
         ]);
     }

@@ -60,7 +60,7 @@ class ProfilePageController extends Controller
                 'occurred_at' => $blockedDate->updated_at,
                 'dot' => 'bg-zinc-400',
                 'title' => 'Data bloqueada',
-                'meta' => Carbon::parse($blockedDate->blocked_date)->format('d/m/Y').' · '.$blockedDate->reason.($blockedDate->attendant_display_name !== '' ? ' · '.$blockedDate->attendant_display_name : ' · Todos os atendentes'),
+                'meta' => Carbon::parse($blockedDate->blocked_date)->format('d/m/y').' · '.$blockedDate->reason.($blockedDate->attendant_display_name !== '' ? ' · '.$blockedDate->attendant_display_name : ' · Todos os atendentes'),
                 'status' => 'Bloqueado',
                 'statusClass' => 'bg-zinc-700 text-zinc-200',
             ]);

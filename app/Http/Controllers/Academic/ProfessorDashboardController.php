@@ -107,7 +107,7 @@ class ProfessorDashboardController extends Controller
             'todayCount' => $todayCount,
             'pendingCount' => $pendingCount,
             'completedMonthCount' => $completedMonthCount,
-            'todayLabel' => $today->locale('pt_BR')->translatedFormat('d/m/Y'),
+            'todayLabel' => $today->format('d/m/y'),
             'attendantAlias' => $primaryAlias,
             'schedule' => $schedule,
         ]);
