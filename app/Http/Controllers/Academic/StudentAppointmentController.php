@@ -71,7 +71,8 @@ class StudentAppointmentController extends Controller
 
         $calendarDays = [];
 
-        foreach (range(0, (int) $monthStart->dayOfWeek - 1) as $index) {
+        $leadingDays = (int) $monthStart->dayOfWeek;
+        for ($index = 0; $index < $leadingDays; $index++) {
             $calendarDays[] = [
                 'day' => null,
                 'isToday' => false,
@@ -206,6 +207,8 @@ class StudentAppointmentController extends Controller
 
     public function create(Request $request): View
     {
+        $rescheduleAppointmentId = $request->integer('appointment_id');
+
         $dateWasProvided = $request->filled('date');
 
         $date = $request->filled('date')
@@ -276,6 +279,20 @@ class StudentAppointmentController extends Controller
             $attendantDateSlots = [];
             $attendantCalendarDays = [];
 
+            $leadingDays = (int) $monthStart->dayOfWeek;
+            for ($index = 0; $index < $leadingDays; $index++) {
+                $attendantCalendarDays[] = [
+                    'date' => null,
+                    'day' => null,
+                    'isToday' => false,
+                    'isSelected' => false,
+                    'hasAvailability' => false,
+                    'isSystemDay' => false,
+                    'unavailability_reason' => null,
+                    'status' => 'empty',
+                ];
+            }
+
             foreach (range(1, $daysInMonth) as $day) {
                 $dayDate = $monthStart->copy()->day($day);
                 $dateKey = $dayDate->format('Y-m-d');
@@ -297,11 +314,26 @@ class StudentAppointmentController extends Controller
                     'hasAvailability' => $availableCount > 0,
                     'isSystemDay' => $isSystemDay,
                     'unavailability_reason' => $unavailabilityReason,
+                    'status' => 'filled',
                 ];
             }
 
             $slotsByDateByAttendant[$attendantKey] = $attendantDateSlots;
             $calendarDaysByAttendant[$attendantKey] = $attendantCalendarDays;
+        }
+
+        $leadingDays = (int) $monthStart->dayOfWeek;
+        for ($index = 0; $index < $leadingDays; $index++) {
+            $calendarDays[] = [
+                'date' => null,
+                'day' => null,
+                'isToday' => false,
+                'isSelected' => false,
+                'hasAvailability' => false,
+                'isSystemDay' => false,
+                'unavailability_reason' => null,
+                'status' => 'empty',
+            ];
         }
 
         foreach (range(1, $daysInMonth) as $day) {
@@ -325,11 +357,13 @@ class StudentAppointmentController extends Controller
                 'hasAvailability' => $availableCount > 0,
                 'isSystemDay' => $isSystemDay,
                 'unavailability_reason' => $unavailabilityReason,
+                'status' => 'filled',
             ];
         }
 
         return view('academic.student-new', [
             'attendants' => $attendants,
+            'rescheduleAppointmentId' => $rescheduleAppointmentId > 0 ? $rescheduleAppointmentId : null,
             'selectedDate' => $date,
             'selectedAttendantKey' => $attendantFilter,
             'selectedAttendantName' => $attendantName,
@@ -352,6 +386,7 @@ class StudentAppointmentController extends Controller
         $this->scheduling->applyAutomaticNoShowRules();
 
         $validated = $request->validate([
+            'appointment_id' => ['nullable', 'integer', 'exists:appointments,id'],
             'attendant_key' => ['nullable', 'string', 'required_without:attendant_name'],
             'attendant_name' => ['nullable', 'string', 'max:255', 'required_without:attendant_key'],
             'subject' => ['required', 'string', 'max:255'],
@@ -367,6 +402,34 @@ class StudentAppointmentController extends Controller
 
         $attendantName = null;
         $attendantUserId = null;
+        $appointmentToReschedule = null;
+
+        $appointmentId = (int) ($validated['appointment_id'] ?? 0);
+
+        if ($appointmentId > 0) {
+            $appointmentToReschedule = Appointment::query()
+                ->whereKey($appointmentId)
+                ->where('student_registration', $registration)
+                ->first();
+
+            if (! $appointmentToReschedule) {
+                return back()->withInput()->withErrors([
+                    'time' => 'Agendamento para reagendamento não encontrado.',
+                ]);
+            }
+
+            if (! in_array($appointmentToReschedule->status, ['Confirmado', 'Pendente'], true)) {
+                return back()->withInput()->withErrors([
+                    'time' => 'Este agendamento não pode mais ser reagendado.',
+                ]);
+            }
+
+            if (! $this->scheduling->canModifyScheduledAppointment($appointmentToReschedule->scheduled_at)) {
+                return back()->withInput()->withErrors([
+                    'time' => $this->scheduling->modificationWindowMessage(),
+                ]);
+            }
+        }
 
         if (! empty($validated['attendant_key'] ?? null)) {
             $selectedAttendant = $this->availableAttendants()
@@ -405,13 +468,13 @@ class StudentAppointmentController extends Controller
             ]);
         }
 
-        if ($this->scheduling->hasReachedStudentActiveLimit($registration)) {
+        if ($this->scheduling->hasReachedStudentActiveLimit($registration, $appointmentToReschedule?->id)) {
             return back()->withInput()->withErrors([
                 'time' => 'Você já atingiu o limite de '.SchedulingService::MAX_ACTIVE_APPOINTMENTS_PER_STUDENT.' agendamentos ativos.',
             ]);
         }
 
-        $studentConflict = $this->scheduling->hasStudentActiveConflict($registration, $scheduledAt);
+        $studentConflict = $this->scheduling->hasStudentActiveConflict($registration, $scheduledAt, $appointmentToReschedule?->id);
 
         if ($studentConflict) {
             return back()->withInput()->withErrors([
@@ -419,7 +482,7 @@ class StudentAppointmentController extends Controller
             ]);
         }
 
-        if (! $this->scheduling->hasAttendantShiftCapacity($scheduledAt, $attendantName, $attendantUserId)) {
+        if (! $this->scheduling->hasAttendantShiftCapacity($scheduledAt, $attendantName, $attendantUserId, $appointmentToReschedule?->id)) {
             return back()->withInput()->withErrors([
                 'time' => 'Capacidade máxima do atendente para este turno foi atingida.',
             ]);
@@ -445,12 +508,26 @@ class StudentAppointmentController extends Controller
             $scheduledAt,
             $attendantName,
             $attendantUserId,
+            $appointmentToReschedule?->id,
         );
 
         if ($conflict) {
             return back()->withInput()->withErrors([
                 'time' => 'Este horário já foi ocupado. Selecione outro horário.',
             ]);
+        }
+
+        if ($appointmentToReschedule) {
+            $appointmentToReschedule->update([
+                'student_name' => $user->name,
+                'attendant_name' => $attendantName,
+                'attendant_user_id' => $attendantUserId,
+                'subject' => $validated['subject'],
+                'scheduled_at' => $scheduledAt,
+                'status' => 'Pendente',
+            ]);
+
+            return redirect()->route('academic.student.mine')->with('status', 'Agendamento reagendado com sucesso.');
         }
 
         Appointment::query()->create([

@@ -412,6 +412,56 @@ test('student cannot exceed maximum active appointments limit', function () {
     $response->assertSessionHasErrors('time');
 });
 
+test('student reschedule updates same appointment record', function () {
+    /** @var \Tests\TestCase $this */
+    $student = User::factory()->create([
+        'role' => 'student',
+        'matricula' => '20249990021',
+    ]);
+
+    AttendantSchedule::query()->create([
+        'attendant_name' => 'Prof. Ana Lima',
+        'working_days' => ['mon'],
+        'day_settings' => weekdaySettings(['mon'], '10:00', '12:00'),
+        'start_time' => '10:00',
+        'end_time' => '12:00',
+        'break_start' => null,
+        'break_end' => null,
+        'slot_duration_minutes' => 30,
+    ]);
+
+    $monday = Carbon::now()->next('Monday');
+
+    $appointment = Appointment::query()->create([
+        'student_name' => $student->name,
+        'student_registration' => '20249990021',
+        'attendant_name' => 'Prof. Ana Lima',
+        'subject' => 'Assunto original',
+        'scheduled_at' => $monday->copy()->setTime(10, 0),
+        'status' => 'Pendente',
+    ]);
+
+    $response = $this->actingAs($student)->post(route('academic.student.store'), [
+        'appointment_id' => $appointment->id,
+        'attendant_name' => 'Prof. Ana Lima',
+        'subject' => 'Assunto atualizado',
+        'date' => $monday->toDateString(),
+        'time' => '10:30',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('academic.student.mine'));
+
+    expect(Appointment::query()->count())->toBe(1);
+
+    $updated = $appointment->fresh();
+    expect($updated)->not->toBeNull();
+    expect($updated->id)->toBe($appointment->id);
+    expect($updated->subject)->toBe('Assunto atualizado');
+    expect($updated->scheduled_at->format('H:i'))->toBe('10:30');
+});
+
 test('student cancel is blocked inside modification window', function () {
     /** @var \Tests\TestCase $this */
     Carbon::setTestNow(Carbon::parse('2026-03-18 10:00:00'));

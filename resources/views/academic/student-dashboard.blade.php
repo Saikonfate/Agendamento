@@ -125,7 +125,7 @@
                             >{{ $day['day'] }}</button>
                         @endforeach
                     </div>
-                    <p data-calendar-day-reason class="mt-2 min-h-10 rounded-lg border border-violet-500/30 bg-violet-500/15 px-3 py-2 text-sm font-medium text-violet-100">
+                    <p data-calendar-day-reason class="mt-2 min-h-10 rounded-lg border border-violet-300/70 bg-violet-500/30 px-3 py-2 text-sm font-semibold text-white">
                         Clique em um dia para visualizar o motivo de indisponibilidade.
                     </p>
                     @if ($selectedAttendantName === '')

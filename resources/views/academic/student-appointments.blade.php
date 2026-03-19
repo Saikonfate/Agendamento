@@ -60,7 +60,7 @@
                                 <td class="px-4 py-3">
                                     <div class="flex gap-2">
                                         @if (in_array($appointment->status, ['Confirmado', 'Pendente'], true))
-                                            <a href="{{ route('academic.student.new', ['date' => $appointment->scheduled_at->format('Y-m-d'), 'attendant_user_id' => $appointment->attendant_user_id, 'attendant_name' => $appointment->attendant_display_name, 'subject' => $appointment->subject]) }}" class="rounded-xl border border-zinc-700 px-3 py-1 hover:border-violet-400">Reagendar</a>
+                                            <a href="{{ route('academic.student.new', ['appointment_id' => $appointment->id, 'date' => $appointment->scheduled_at->format('Y-m-d'), 'attendant_user_id' => $appointment->attendant_user_id, 'attendant_name' => $appointment->attendant_display_name, 'subject' => $appointment->subject]) }}" class="rounded-xl border border-zinc-700 px-3 py-1 hover:border-violet-400">Reagendar</a>
                                             <form method="POST" action="{{ route('academic.student.cancel', $appointment) }}" data-cancel-form>
                                                 @csrf
                                                 @method('PATCH')
@@ -82,7 +82,7 @@
             </div>
         </article>
 
-        <p class="text-lg italic text-zinc-500">Cancelamento disponível somente com antecedência mínima de 2h. Reagendamento redireciona para tela de novo agendamento com dados pré-preenchidos.</p>
+        <p class="text-lg italic text-zinc-500">Cancelamento disponível somente com antecedência mínima de 2h. Reagendamento atualiza o próprio agendamento com os novos dados.</p>
     </section>
 
     <script>

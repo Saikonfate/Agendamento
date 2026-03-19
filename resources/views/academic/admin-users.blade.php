@@ -16,8 +16,8 @@
 
         <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5" data-register-tabs data-active-tab="{{ $activeTab }}">
             <div class="mb-4 flex gap-3 border-b border-zinc-800 pb-3">
-                <button type="button" data-tab-trigger="student" class="rounded-xl border px-4 py-1.5 text-sm font-semibold">Aluno</button>
-                <button type="button" data-tab-trigger="professor" class="rounded-xl border px-4 py-1.5 text-sm font-semibold">Professor</button>
+                <button type="button" data-tab-trigger="student" class="rounded-xl border px-4 py-1.5 text-sm font-semibold text-white">Aluno</button>
+                <button type="button" data-tab-trigger="professor" class="rounded-xl border px-4 py-1.5 text-sm font-semibold text-white">Professor</button>
             </div>
 
             <div class="grid gap-4 xl:grid-cols-[1fr_1.15fr]">
@@ -49,8 +49,8 @@
                             <p class="mt-1 text-xs text-zinc-500">O aluno deverá alterar no primeiro acesso.</p>
                         </div>
                         <div class="flex gap-3 pt-1">
-                            <button type="submit" class="rounded-xl border border-zinc-700 px-4 py-2 text-xl font-semibold hover:border-violet-400">Cadastrar aluno</button>
-                            <button type="reset" class="rounded-xl border border-zinc-700 px-4 py-2 text-xl font-semibold">Limpar</button>
+                            <button type="submit" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 text-xl font-semibold text-white hover:bg-violet-500/40 hover:border-violet-200">Cadastrar aluno</button>
+                            <button type="reset" class="rounded-xl border border-zinc-600 bg-zinc-800/70 px-4 py-2 text-xl font-semibold text-zinc-100 hover:border-zinc-500 hover:bg-zinc-700/70">Limpar</button>
                         </div>
                     </form>
 
@@ -76,8 +76,8 @@
                             <input type="text" value="123456" disabled class="w-full cursor-not-allowed rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-500" />
                         </div>
                         <div class="flex gap-3 pt-1">
-                            <button type="submit" class="rounded-xl border border-zinc-700 px-4 py-2 text-xl font-semibold hover:border-violet-400">Cadastrar professor</button>
-                            <button type="reset" class="rounded-xl border border-zinc-700 px-4 py-2 text-xl font-semibold">Limpar</button>
+                            <button type="submit" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 text-xl font-semibold text-white hover:bg-violet-500/40 hover:border-violet-200">Cadastrar professor</button>
+                            <button type="reset" class="rounded-xl border border-zinc-600 bg-zinc-800/70 px-4 py-2 text-xl font-semibold text-zinc-100 hover:border-zinc-500 hover:bg-zinc-700/70">Limpar</button>
                         </div>
                     </form>
                 </article>
@@ -197,9 +197,9 @@
             </div>
 
             <div class="mt-6 flex flex-wrap gap-2 border-t border-violet-500/20 pt-4">
-                <button type="button" class="rounded-xl border border-zinc-700 px-4 py-2 font-semibold text-white">Excluir cadastro</button>
-                <button type="button" data-close-modal class="rounded-xl border border-zinc-700 px-4 py-2 font-semibold text-white">Cancelar</button>
-                <button type="button" class="rounded-xl border border-zinc-700 px-4 py-2 font-semibold text-white hover:border-violet-400">Salvar alterações</button>
+                <button type="button" class="rounded-xl border border-rose-400/70 bg-rose-500/20 px-4 py-2 font-semibold text-rose-100 hover:bg-rose-500/30">Excluir cadastro</button>
+                <button type="button" data-close-modal class="rounded-xl border border-zinc-600 bg-zinc-800/70 px-4 py-2 font-semibold text-zinc-100 hover:border-zinc-500 hover:bg-zinc-700/70">Cancelar</button>
+                <button type="button" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 font-semibold text-white hover:bg-violet-500/40 hover:border-violet-200">Salvar alterações</button>
             </div>
         </div>
     </div>
@@ -222,23 +222,12 @@
                     <input data-edit-professor-email type="email" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
                 </div>
 
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <label class="mb-2 block text-sm text-zinc-400">Departamento</label>
-                        <input type="text" value="Não informado" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
-                    </div>
-                    <div>
-                        <label class="mb-2 block text-sm text-zinc-400">Titulação</label>
-                        <input type="text" value="Não informado" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2" />
-                    </div>
-                </div>
-
             </div>
 
             <div class="mt-6 flex flex-wrap gap-2 border-t border-violet-500/20 pt-4">
-                <button type="button" class="rounded-xl border border-zinc-700 px-4 py-2 font-semibold text-white">Excluir cadastro</button>
-                <button type="button" data-close-modal class="rounded-xl border border-zinc-700 px-4 py-2 font-semibold text-white">Cancelar</button>
-                <button type="button" class="rounded-xl border border-zinc-700 px-4 py-2 font-semibold text-white hover:border-violet-400">Salvar alterações</button>
+                <button type="button" class="rounded-xl border border-rose-400/70 bg-rose-500/20 px-4 py-2 font-semibold text-rose-100 hover:bg-rose-500/30">Excluir cadastro</button>
+                <button type="button" data-close-modal class="rounded-xl border border-zinc-600 bg-zinc-800/70 px-4 py-2 font-semibold text-zinc-100 hover:border-zinc-500 hover:bg-zinc-700/70">Cancelar</button>
+                <button type="button" class="rounded-xl border border-violet-300 bg-violet-500/30 px-4 py-2 font-semibold text-white hover:bg-violet-500/40 hover:border-violet-200">Salvar alterações</button>
             </div>
         </div>
     </div>
@@ -252,11 +241,12 @@
                 const setActiveTab = (tabName) => {
                     triggers.forEach((trigger) => {
                         const active = trigger.dataset.tabTrigger === tabName;
-                        trigger.classList.toggle('border-violet-500', active);
-                        trigger.classList.toggle('bg-violet-500/20', active);
-                        trigger.classList.toggle('text-violet-200', active);
+                        trigger.classList.toggle('border-violet-300', active);
+                        trigger.classList.toggle('bg-violet-500/35', active);
+                        trigger.classList.toggle('text-white', active);
                         trigger.classList.toggle('border-zinc-700', !active);
-                        trigger.classList.toggle('text-zinc-300', !active);
+                        trigger.classList.toggle('bg-zinc-800/70', !active);
+                        trigger.classList.toggle('text-zinc-200', !active);
                     });
 
                     panels.forEach((panel) => {

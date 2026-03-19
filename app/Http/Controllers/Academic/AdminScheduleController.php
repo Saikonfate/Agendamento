@@ -95,7 +95,8 @@ class AdminScheduleController extends Controller
         $calendarMonthLabel = ucfirst($monthStart->copy()->locale('pt_BR')->translatedFormat('M/Y'));
 
         $occupationCalendarDays = [];
-        foreach (range(0, (int) $monthStart->dayOfWeek - 1) as $index) {
+        $leadingDays = (int) $monthStart->dayOfWeek;
+        for ($index = 0; $index < $leadingDays; $index++) {
             $occupationCalendarDays[] = [
                 'day' => null,
                 'date' => null,

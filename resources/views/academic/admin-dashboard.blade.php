@@ -98,16 +98,16 @@
                 </div>
 
                 <div class="mb-4 flex flex-wrap gap-2">
-                    <button type="button" data-filter-button data-filter-status="all" class="rounded-xl border border-violet-500 bg-violet-500/20 px-3 py-1.5 text-sm font-semibold text-violet-200">
+                    <button type="button" data-filter-button data-filter-status="all" class="rounded-xl border border-violet-300 bg-violet-500/35 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-500/45">
                         Todos (<span data-filter-count="all">{{ $scheduledTotal }}</span>)
                     </button>
-                    <button type="button" data-filter-button data-filter-status="confirmado" class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-300">
+                    <button type="button" data-filter-button data-filter-status="confirmado" class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-100">
                         Confirmados (<span data-filter-count="confirmado">{{ $confirmedTotal }}</span>)
                     </button>
-                    <button type="button" data-filter-button data-filter-status="pendente" class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-300">
+                    <button type="button" data-filter-button data-filter-status="pendente" class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-100">
                         Pendentes (<span data-filter-count="pendente">{{ $pendingTotal }}</span>)
                     </button>
-                    <button type="button" data-filter-button data-filter-status="realizado" class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-300">
+                    <button type="button" data-filter-button data-filter-status="realizado" class="rounded-xl border border-zinc-700 px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-100">
                         Realizados (<span data-filter-count="realizado">{{ $completedTotal }}</span>)
                     </button>
                 </div>
@@ -127,7 +127,7 @@
                         <tbody class="divide-y divide-zinc-800">
                             @forelse ($initialAppointments as $appointment)
                                 <tr data-appointment-row data-row-current-status="{{ strtolower($appointment['status']) }}" data-row-attendant="{{ strtolower($appointment['attendant']) }}">
-                                    <td data-row-time class="px-3 py-3 text-xl font-semibold text-violet-200">{{ $appointment['time'] }}</td>
+                                    <td data-row-time class="px-3 py-3 text-xl font-semibold text-violet-100">{{ $appointment['time'] }}</td>
                                     <td class="px-3 py-3">
                                         <p class="font-semibold text-white">{{ $appointment['student'] }}</p>
                                         <p class="text-sm text-zinc-400">{{ $appointment['registration'] }}</p>
@@ -197,18 +197,18 @@
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <h3 class="text-3xl font-semibold">Resumo operacional</h3>
                     <p class="mt-1 text-sm text-zinc-400">{{ $dateLabel ?? now(config('app.timezone'))->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y') }}</p>
-                    <div class="mt-4 grid grid-cols-1 gap-2 text-center text-xs sm:grid-cols-3 sm:text-sm">
-                        <div class="flex min-h-20 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
-                            <p class="text-zinc-500">Confirmados</p>
-                            <p class="font-semibold leading-none text-emerald-300">{{ $confirmedTotal }}</p>
+                    <div class="mt-4 grid grid-cols-1 gap-2 text-center text-sm">
+                        <div class="flex min-h-24 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
+                            <p class="break-words text-zinc-400">Confirmados</p>
+                            <p class="mt-1 text-2xl font-semibold leading-tight text-emerald-300">{{ $confirmedTotal }}</p>
                         </div>
-                        <div class="flex min-h-20 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
-                            <p class="text-zinc-500">Pendentes</p>
-                            <p class="font-semibold leading-none text-amber-300">{{ $pendingTotal }}</p>
+                        <div class="flex min-h-24 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
+                            <p class="break-words text-zinc-400">Pendentes</p>
+                            <p class="mt-1 text-2xl font-semibold leading-tight text-amber-300">{{ $pendingTotal }}</p>
                         </div>
-                        <div class="flex min-h-20 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
-                            <p class="text-zinc-500">Realizados</p>
-                            <p class="font-semibold leading-none text-violet-300">{{ $completedTotal }}</p>
+                        <div class="flex min-h-24 flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2">
+                            <p class="break-words text-zinc-400">Realizados</p>
+                            <p class="mt-1 text-2xl font-semibold leading-tight text-violet-300">{{ $completedTotal }}</p>
                         </div>
                     </div>
                     <p class="mt-3 text-xs text-zinc-500">Use os filtros da agenda para refinar por status e atendente em tempo real.</p>
@@ -223,7 +223,7 @@
                     </div>
                     <div data-notices-list class="mt-4 space-y-3 text-sm">
                         @foreach ($initialNotices as $notice)
-                            <div data-notice-item data-notice-id="{{ $notice['id'] }}" data-tone="{{ $notice['tone'] }}" class="{{ $notice['tone'] === 'amber' ? 'rounded-lg border-l-2 border-amber-400 bg-amber-500/10 px-3 py-2 text-amber-300' : 'rounded-lg border-l-2 border-violet-400 bg-violet-500/10 px-3 py-2 text-violet-200' }}">
+                            <div data-notice-item data-notice-id="{{ $notice['id'] }}" data-tone="{{ $notice['tone'] }}" class="{{ $notice['tone'] === 'amber' ? 'rounded-lg border-l-2 border-amber-400 bg-amber-500/10 px-3 py-2 text-amber-300' : 'rounded-lg border-l-2 border-violet-400 bg-violet-500/20 px-3 py-2 text-violet-100' }}">
                                 {{ $notice['message'] }}
                             </div>
                         @endforeach
@@ -257,7 +257,7 @@
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Horário</span>
-                    <span data-details-time class="font-semibold text-violet-200">—</span>
+                    <span data-details-time class="font-semibold text-violet-100">—</span>
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Atendente</span>
@@ -305,7 +305,7 @@
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Horário</span>
-                    <span data-attend-time class="font-semibold text-violet-200">—</span>
+                    <span data-attend-time class="font-semibold text-violet-100">—</span>
                 </div>
                 <div class="grid grid-cols-[1fr_auto] py-3">
                     <span class="text-zinc-400">Atendente</span>
@@ -476,7 +476,7 @@
                     return 'rounded-lg border-l-2 border-amber-400 bg-amber-500/10 px-3 py-2 text-amber-300';
                 }
 
-                return 'rounded-lg border-l-2 border-violet-400 bg-violet-500/10 px-3 py-2 text-violet-200';
+                return 'rounded-lg border-l-2 border-violet-400 bg-violet-500/20 px-3 py-2 text-violet-100';
             };
 
             const getNoticeToneLabel = (tone) => {
@@ -721,7 +721,7 @@
                     textWrap.className = 'min-w-0';
 
                     const toneEl = document.createElement('p');
-                    toneEl.className = `text-xs font-semibold ${notice.tone === 'amber' ? 'text-amber-300' : 'text-violet-200'}`;
+                    toneEl.className = `text-xs font-semibold ${notice.tone === 'amber' ? 'text-amber-300' : 'text-violet-100'}`;
                     toneEl.textContent = getNoticeToneLabel(notice.tone);
 
                     const messageEl = document.createElement('p');
@@ -833,13 +833,13 @@
 
             const setFilterButtonState = (button, isActive) => {
                 if (isActive) {
-                    button.classList.add('border-violet-500', 'bg-violet-500/20', 'text-violet-200');
-                    button.classList.remove('border-zinc-700', 'text-zinc-300');
+                    button.classList.add('border-violet-300', 'bg-violet-500/35', 'text-white', 'hover:bg-violet-500/45');
+                    button.classList.remove('border-zinc-700', 'text-zinc-300', 'hover:border-zinc-500', 'hover:bg-zinc-800/70', 'hover:text-zinc-100');
                     return;
                 }
 
-                button.classList.remove('border-violet-500', 'bg-violet-500/20', 'text-violet-200');
-                button.classList.add('border-zinc-700', 'text-zinc-300');
+                button.classList.remove('border-violet-300', 'bg-violet-500/35', 'text-white', 'hover:bg-violet-500/45');
+                button.classList.add('border-zinc-700', 'text-zinc-300', 'hover:border-zinc-500', 'hover:bg-zinc-800/70', 'hover:text-zinc-100');
             };
 
             const refreshFilterCounts = () => {

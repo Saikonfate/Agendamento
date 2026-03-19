@@ -6,6 +6,7 @@
     $selectedDate = $selectedDate ?? now()->addDay();
     $selectedAttendantKey = $selectedAttendantKey ?? '';
     $selectedAttendantName = $selectedAttendantName ?? '';
+    $rescheduleAppointmentId = $rescheduleAppointmentId ?? null;
     $subject = $subject ?? '';
     $slots = collect($slots ?? []);
     $slotsByDate = $slotsByDate ?? [];
@@ -14,6 +15,10 @@
     $calendarDaysByAttendant = $calendarDaysByAttendant ?? [];
     $calendarMonthLabel = $calendarMonthLabel ?? $selectedDate->locale('pt_BR')->translatedFormat('F/Y');
     $selectedTime = old('time', $selectedTime ?? '');
+    $hasValidSelectedTime = preg_match('/^\d{2}:\d{2}$/', (string) $selectedTime) === 1;
+    $selectedTimeLabel = $hasValidSelectedTime
+        ? $selectedTime.' - '.\Illuminate\Support\Carbon::createFromFormat('H:i', $selectedTime)->addMinutes(30)->format('H:i')
+        : 'Selecione um horário';
     $selectedDateValue = old('date', $selectedDate->format('Y-m-d'));
     $selectedDateLabel = \Illuminate\Support\Carbon::parse($selectedDateValue)->translatedFormat('d/m/Y');
     $selectedDateLongLabel = \Illuminate\Support\Carbon::parse($selectedDateValue)->translatedFormat('l, d \d\e F \d\e Y');
@@ -32,14 +37,17 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-3 items-center gap-4 text-sm text-zinc-300">
-            <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-violet-400 bg-violet-500/20 text-violet-200">1</span> Tipo</div>
-            <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-violet-400 bg-violet-500/20 text-violet-200">2</span> Data / Horário</div>
-            <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-violet-400 bg-violet-500/20 text-violet-200">3</span> Confirmação</div>
+        <div class="grid grid-cols-3 items-center gap-4 text-sm text-zinc-100">
+            <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-violet-300 bg-violet-500/35 font-semibold text-white">1</span> Tipo</div>
+            <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-violet-300 bg-violet-500/35 font-semibold text-white">2</span> Data / Horário</div>
+            <div class="flex items-center gap-2"><span class="flex size-7 items-center justify-center rounded-full border border-violet-300 bg-violet-500/35 font-semibold text-white">3</span> Confirmação</div>
         </div>
 
         <form method="POST" action="{{ route('academic.student.store') }}" class="grid gap-4 lg:grid-cols-2" data-student-appointment-form>
             @csrf
+            @if ($rescheduleAppointmentId)
+                <input type="hidden" name="appointment_id" value="{{ $rescheduleAppointmentId }}" />
+            @endif
             <div class="space-y-4">
                 <article class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                     <h2 class="text-3xl font-semibold">1 · Tipo de atendimento</h2>
@@ -88,11 +96,11 @@
                 </article>
 
                 <article class="rounded-2xl border border-violet-400/60 bg-violet-500/15 p-5">
-                    <h3 class="text-2xl font-semibold text-violet-100">3 · Confirmação</h3>
+                    <h3 class="text-2xl font-semibold text-white">3 · Confirmação</h3>
                     <div class="mt-4 space-y-2 text-xl text-zinc-200">
                         <p><span class="font-semibold">Atendente:</span> <span data-confirm-attendant>{{ $selectedAttendantName !== '' ? $selectedAttendantName : 'Selecione um atendente' }}</span></p>
                         <p><span class="font-semibold">Data:</span> <span data-confirm-date>{{ $selectedDateLongLabel }}</span></p>
-                        <p><span class="font-semibold">Horário:</span> <span data-confirm-time>{{ $selectedTime !== '' ? $selectedTime.' - '.\Illuminate\Support\Carbon::createFromFormat('H:i', $selectedTime)->addMinutes(30)->format('H:i') : 'Selecione um horário' }}</span></p>
+                        <p><span class="font-semibold">Horário:</span> <span data-confirm-time>{{ $selectedTimeLabel }}</span></p>
                         <p><span class="font-semibold">Motivo:</span> {{ old('subject', $subject ?: 'Informe o motivo') }}</p>
                     </div>
                     <div class="mt-5 flex flex-wrap gap-3">
@@ -124,7 +132,7 @@
 
                 <p class="mt-4 text-sm text-zinc-400">Somente datas com horários disponíveis para agendamento podem ser selecionadas.</p>
                 <p class="mt-1 text-xs text-zinc-500">Passe o cursor sobre dias indisponíveis para ver o motivo do bloqueio.</p>
-                <p data-calendar-day-reason class="mt-2 min-h-10 rounded-lg border border-violet-500/30 bg-violet-500/15 px-3 py-2 text-sm font-medium text-violet-100">
+                <p data-calendar-day-reason class="mt-2 min-h-10 rounded-lg border border-violet-300/70 bg-violet-500/30 px-3 py-2 text-sm font-semibold text-white">
                     Clique em um dia para visualizar o motivo de indisponibilidade.
                 </p>
 
@@ -272,6 +280,14 @@
                 calendarDaysContainer.innerHTML = '';
 
                 calendarDays.forEach((day) => {
+                    if (day.status === 'empty' || !day.date || !day.day) {
+                        const placeholder = document.createElement('span');
+                        placeholder.className = 'rounded-lg border border-transparent px-2 py-2 text-sm';
+                        placeholder.innerHTML = '&nbsp;';
+                        calendarDaysContainer.appendChild(placeholder);
+                        return;
+                    }
+
                     const button = document.createElement('button');
                     const isSelectable = Boolean(day.hasAvailability && day.isSystemDay);
 
