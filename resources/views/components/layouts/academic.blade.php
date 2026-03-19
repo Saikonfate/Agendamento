@@ -27,6 +27,7 @@
             ?? ($currentRole === 'admin'
                 ? 'AD'
                 : ($computedInitials !== '' ? $computedInitials : 'US'));
+        $hideFlashMessages = (bool) ($hideFlashMessages ?? false);
 
         $flashMessages = collect([
             session('status'),
@@ -36,7 +37,7 @@
         ])->filter()->values();
     @endphp
 
-    @if ($flashMessages->isNotEmpty())
+    @if (! $hideFlashMessages && $flashMessages->isNotEmpty())
         <div class="fixed right-4 top-4 z-50 flex w-[min(92vw,26rem)] flex-col gap-2">
             @foreach ($flashMessages as $message)
                 <div data-flash-message class="ui-flash rounded-xl border border-emerald-500/40 bg-emerald-500/12 px-4 py-3 text-sm text-emerald-200 shadow-lg shadow-black/20">

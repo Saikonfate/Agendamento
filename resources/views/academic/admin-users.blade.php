@@ -7,12 +7,21 @@
     $professors = \App\Models\User::query()->where('role', 'professor')->latest()->take(6)->get();
 @endphp
 
-<x-layouts.academic :title="$title" :role="$role" active="cadastros" :userName="$displayName" userInitials="AD">
+<x-layouts.academic :title="$title" :role="$role" active="cadastros" :userName="$displayName" userInitials="AD" :hideFlashMessages="true">
     <section class="space-y-5">
         <div>
             <h1 class="text-4xl font-semibold">Gerenciar cadastros</h1>
             <p class="mt-1 text-zinc-400">Cadastre e gerencie professores e alunos do sistema</p>
         </div>
+
+        @if (session('status'))
+            <div data-register-feedback class="rounded-2xl border border-emerald-500/40 bg-emerald-500/12 px-4 py-3 text-sm text-emerald-200">
+                <div class="flex items-start justify-between gap-3">
+                    <p>{{ session('status') }}</p>
+                    <button type="button" data-dismiss-register-feedback class="shrink-0 rounded-lg border border-emerald-500/40 px-2 py-0.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/20">Fechar</button>
+                </div>
+            </div>
+        @endif
 
         <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5" data-register-tabs data-active-tab="{{ $activeTab }}">
             <div class="mb-4 flex gap-3 border-b border-zinc-800 pb-3">
@@ -234,6 +243,13 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const registerFeedback = document.querySelector('[data-register-feedback]');
+            const dismissRegisterFeedbackButton = document.querySelector('[data-dismiss-register-feedback]');
+
+            dismissRegisterFeedbackButton?.addEventListener('click', () => {
+                registerFeedback?.remove();
+            });
+
             document.querySelectorAll('[data-register-tabs]').forEach((tabs) => {
                 const triggers = tabs.querySelectorAll('[data-tab-trigger]');
                 const panels = tabs.querySelectorAll('[data-tab-panel]');
